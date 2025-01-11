@@ -12,25 +12,23 @@ class SubjectNameTextFieldWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Flexible(
-        flex: 1,
-        child: Obx(
-          () => TextField(
-            focusNode: controller.subjectFocus,
-            controller: controller.subjectController,
-            canRequestFocus: true,
-            onChanged: (text) => controller.updateSubject(text),
-            decoration: const InputDecoration(
-              label: Text("Subject Name"),
-              hintText: "Subject Name",
-              hintStyle:
-                  TextStyle(color: Colors.grey, fontWeight: FontWeight.w400),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.all(
-                  Radius.circular(15),
-                ),
-              ),
+      flex: 1,
+      child: TextField(
+        focusNode: controller.subjectFocus,
+        controller: controller.subjectController,
+        canRequestFocus: true,
+        onChanged: (text) => controller.updateSubject(text),
+        decoration: const InputDecoration(
+          label: Text("Subject Name"),
+          hintText: "Subject Name",
+          hintStyle: TextStyle(color: Colors.grey, fontWeight: FontWeight.w400),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.all(
+              Radius.circular(15),
             ),
           ),
-        ));
+        ),
+      ),
+    );
   }
 }

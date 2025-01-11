@@ -13,24 +13,22 @@ class ChapterNameTextFieldWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Flexible(
-        flex: 1,
-        child: Obx(
-          () => TextField(
-            focusNode: controller.topicFocus,
-            controller: controller.topicController,
-            onChanged: (text) => controller.updateChapter(text),
-            decoration: const InputDecoration(
-              label: Text("Chapter Name"),
-              hintText: "Chapter Name",
-              hintStyle:
-                  TextStyle(color: Colors.grey, fontWeight: FontWeight.w400),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.all(
-                  Radius.circular(15),
-                ),
-              ),
+      flex: 1,
+      child: TextField(
+        focusNode: controller.topicFocus,
+        controller: controller.topicController,
+        onChanged: (text) => controller.updateChapter(text),
+        decoration: const InputDecoration(
+          label: Text("Chapter Name"),
+          hintText: "Chapter Name",
+          hintStyle: TextStyle(color: Colors.grey, fontWeight: FontWeight.w400),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.all(
+              Radius.circular(15),
             ),
           ),
-        ));
+        ),
+      ),
+    );
   }
 }

@@ -13,8 +13,8 @@ class AppController extends GetxController {
   RxString queryText = "".obs;
 
   RxString csv = ''.obs;
-  RxString topicID = 'Pakistan Study'.obs;
-  RxString subject = 'General Knowledge'.obs;
+  RxString topicID = 'Computer System'.obs;
+  RxString subject = 'Computer Studies'.obs;
 
   final isSearchMode = false.obs;
   final isAscendingOrder = true.obs;
@@ -351,5 +351,55 @@ class AppController extends GetxController {
   updateSubject(String text) {
     subject.value = text;
     update();
+  }
+
+  void setShowAnswers(value) {
+    showAnswers.value = value;
+    update();
+  }
+
+  void sortByName() {
+    if (isAscendingOrder.value) {
+      questions.sort((a, b) {
+        if (a.body?.content == null && b.body?.content == null) {
+          return 0;
+        } else if (a.body?.content == null) {
+          return 1;
+        } else if (b.body?.content == null) {
+          return -1;
+        } else {
+          return a.body!.content!.compareTo(b.body!.content!);
+        }
+      });
+    } else {
+      questions.sort((a, b) {
+        if (a.body?.content == null && b.body?.content == null) {
+          return 0;
+        } else if (a.body?.content == null) {
+          return -1;
+        } else if (b.body?.content == null) {
+          return 1;
+        } else {
+          return b.body!.content!.compareTo(a.body!.content!);
+        }
+      });
+    }
+    isAscendingOrder.value = isAscendingOrder.value;
+
+    update();
+  }
+
+  void setFilteringFourOptions(value) {
+    isFilteringFourAnswers.value = value;
+    update();
+  }
+
+  void setSearchMode(bool value) {
+    isSearchMode.value = value;
+    update();
+  }
+
+  bool getSearchMode() {
+    return isSearchMode.value;
   }
 }

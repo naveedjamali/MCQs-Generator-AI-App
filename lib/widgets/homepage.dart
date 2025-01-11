@@ -14,8 +14,15 @@ import 'package:mcqs_generator_ai_app/widgets/app_drawer.dart';
 import 'package:mcqs_generator_ai_app/widgets/chapter_name_textfield_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/copy_button_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/question_widget.dart';
+import 'package:mcqs_generator_ai_app/widgets/questions_count_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/save_button_widget.dart';
+import 'package:mcqs_generator_ai_app/widgets/search_button.dart';
+import 'package:mcqs_generator_ai_app/widgets/show_answers_widget.dart';
+import 'package:mcqs_generator_ai_app/widgets/show_questions_with_four_answers_only_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/subject_name_textfield_widget.dart';
+
+import 'entries_widget.dart';
+import 'generating_questions_progress_indicator_widget.dart';
 
 class Homepage extends StatelessWidget {
   final AppController controller = Get.find();
@@ -55,26 +62,9 @@ class Homepage extends StatelessWidget {
                 child: Row(
                   children: [
                     Flexible(
-                      child: Row(
-                        children: [
-                          const Text('Show answers'),
-                          Checkbox(
-                              value: controller.showAnswers.value,
-                              onChanged: (value) =>
-                                  controller.showAnswers.value = value!)
-                        ],
-                      ),
+                      child: ShowAnswers(),
                     ),
-                    Row(
-                      children: [
-                        const Text('Filter questions with not 4 answers '),
-                        Checkbox(
-                          value: controller.isFilteringFourAnswers.value,
-                          onChanged: (value) =>
-                              controller.isFilteringFourAnswers.value = value!,
-                        )
-                      ],
-                    ),
+                    ShowQuestionsWithFourAnswersOnly(),
                   ],
                 ),
               ),
@@ -90,30 +80,7 @@ class Homepage extends StatelessWidget {
                               label: Text('filter questions with word',
                                   style: TextStyle(fontSize: 10))),
                         )),
-                    IconButton(
-                        onPressed: () {
-                          if (!getSearchMode()) {
-                            if (controller.searchController.text
-                                .trim()
-                                .isNotEmpty) {
-                              setSearchMode(true);
-                              controller.queryText.value =
-                                  controller.searchController.text;
-                            }
-                          } else {
-                            controller.searchController.text = '';
-                            setSearchMode(false);
-                          }
-                        },
-                        icon: getSearchMode()
-                            ? const Icon(
-                                Icons.close,
-                                color: Colors.red,
-                              )
-                            : const Icon(
-                                Icons.search,
-                                color: Colors.grey,
-                              )),
+                    SearchButton(),
                   ],
                 ),
               ),
@@ -168,18 +135,14 @@ class Homepage extends StatelessWidget {
                       const SizedBox(
                         width: 20,
                       ),
-                      Text(
-                        '${controller.questions.length} Questions',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
+                      QuestionsCountWidget(),
                       const SizedBox(
                         width: 16,
                       ),
                       Padding(
                         padding: const EdgeInsets.all(4.0),
                         child: MaterialButton(
-                            onPressed: _sortByName,
+                            onPressed: controller.sortByName,
                             child: const Row(
                               children: [
                                 Icon(Icons.sort),
@@ -335,8 +298,8 @@ class Homepage extends StatelessWidget {
       child: Scaffold(
           drawer: AppDrawer(
             pickAndLoadQuestions: () => pickAndLoadQuestions(context),
-            getIsSearchMode: getSearchMode,
-            setSearchMode: setSearchMode,
+            getIsSearchMode: controller.getSearchMode,
+            setSearchMode: controller.setSearchMode,
             searchController: controller.searchController,
             getShowAnswers: () => controller.showAnswers.value,
             setShowAnswers: (value) => controller.showAnswers.value = value,
@@ -351,24 +314,7 @@ class Homepage extends StatelessWidget {
               style: TextStyle(color: Colors.white),
             ),
             actions: [
-              if (controller.generatingResponse.value)
-                const Row(
-                  children: [
-                    Text(
-                      'Generating MCQs with Google Gemini AI',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    SizedBox(
-                      width: 16,
-                    ),
-                    Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
+              GeneratingQuestionsProgressIndicator(),
               CopyButtonWidget(
                 callBack: () => copyQuestionsAsText(context),
                 label: 'Copy Text',
@@ -393,8 +339,8 @@ class Homepage extends StatelessWidget {
                     label: 'Save JSON',
                     onPressed: () {
                       UtilFunctions.saveMCQs(
-                          controller.subject,
-                          controller.topicID,
+                          controller.subject.value,
+                          controller.topicID.value,
                           controller.questions,
                           context,
                           true);
@@ -416,14 +362,6 @@ class Homepage extends StatelessWidget {
             ],
           )),
     );
-  }
-
-  void setSearchMode(bool value) {
-    controller.isSearchMode.value = value;
-  }
-
-  bool getSearchMode() {
-    return controller.isSearchMode.value;
   }
 
   void showQuestionsCopiedMessageOnScreen(BuildContext context) {
@@ -505,35 +443,6 @@ class Homepage extends StatelessWidget {
     );
   }
 
-  void _sortByName() {
-    if (controller.isAscendingOrder.value) {
-      controller.questions.sort((a, b) {
-        if (a.body?.content == null && b.body?.content == null) {
-          return 0;
-        } else if (a.body?.content == null) {
-          return 1;
-        } else if (b.body?.content == null) {
-          return -1;
-        } else {
-          return a.body!.content!.compareTo(b.body!.content!);
-        }
-      });
-    } else {
-      controller.questions.sort((a, b) {
-        if (a.body?.content == null && b.body?.content == null) {
-          return 0;
-        } else if (a.body?.content == null) {
-          return -1;
-        } else if (b.body?.content == null) {
-          return 1;
-        } else {
-          return b.body!.content!.compareTo(a.body!.content!);
-        }
-      });
-    }
-    controller.isAscendingOrder.value = controller.isAscendingOrder.value;
-  }
-
   void pickAndLoadQuestions(BuildContext context) async {
     try {
       // Open the file picker
@@ -608,28 +517,6 @@ class Homepage extends StatelessWidget {
         ),
       );
     });
-  }
-}
-
-class EntriesWidget extends StatelessWidget {
-  EntriesWidget({
-    super.key,
-  });
-
-  final AppController controller = Get.find();
-
-  @override
-  Widget build(BuildContext context) {
-    return Obx(() => ListView.builder(
-          itemCount: controller.entries.length,
-          itemBuilder: (context, index) {
-            return ListTile(
-              title: SelectableText(
-                controller.entries[index],
-              ),
-            );
-          },
-        ));
   }
 }
 
