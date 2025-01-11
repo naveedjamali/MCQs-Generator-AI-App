@@ -19,8 +19,10 @@ import 'package:mcqs_generator_ai_app/widgets/save_button_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/search_button.dart';
 import 'package:mcqs_generator_ai_app/widgets/show_answers_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/show_questions_with_four_answers_only_widget.dart';
+import 'package:mcqs_generator_ai_app/widgets/shuffle_questions_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/subject_name_textfield_widget.dart';
 
+import 'boxed_widget.dart';
 import 'entries_widget.dart';
 import 'generating_questions_progress_indicator_widget.dart';
 
@@ -150,34 +152,9 @@ class Homepage extends StatelessWidget {
                               ],
                             )),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.all(4.0),
-                        child: MaterialButton(
-                          onPressed: () {
-                            controller.questions.shuffle();
-                          },
-                          child: const Row(
-                            children: [
-                              Icon(Icons.shuffle),
-                              Text(' Shuffle Questions'),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: MaterialButton(
-                          onPressed: () => deleteQuestions(context),
-                          child: const Row(
-                            children: [
-                              Icon(
-                                Icons.delete,
-                                color: Colors.red,
-                              ),
-                              Text(' Delete Questions'),
-                            ],
-                          ),
-                        ),
+                      ShuffleQuestionsWidget(),
+                      DeleteAllQuestionsWidget(
+                        deleteQuestions: (context) => deleteQuestions(context),
                       ),
                     ],
                   ),
@@ -520,20 +497,30 @@ class Homepage extends StatelessWidget {
   }
 }
 
-class Boxed extends StatelessWidget {
-  const Boxed({required this.child, super.key});
+class DeleteAllQuestionsWidget extends StatelessWidget {
+  DeleteAllQuestionsWidget({
+    super.key,
+    required this.deleteQuestions,
+  });
 
-  final Widget child;
+  void Function(BuildContext context) deleteQuestions;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-              color: Colors.grey, width: 1, style: BorderStyle.solid)),
-      child: child,
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: MaterialButton(
+        onPressed: () => deleteQuestions(context),
+        child: const Row(
+          children: [
+            Icon(
+              Icons.delete,
+              color: Colors.red,
+            ),
+            Text(' Delete Questions'),
+          ],
+        ),
+      ),
     );
   }
 }
