@@ -13,16 +13,19 @@ import 'package:mcqs_generator_ai_app/widgets/ai_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/app_drawer.dart';
 import 'package:mcqs_generator_ai_app/widgets/chapter_name_textfield_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/copy_button_widget.dart';
-import 'package:mcqs_generator_ai_app/widgets/question_widget.dart';
+import 'package:mcqs_generator_ai_app/widgets/output_text_label_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/questions_count_widget.dart';
+import 'package:mcqs_generator_ai_app/widgets/questions_list_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/save_button_widget.dart';
-import 'package:mcqs_generator_ai_app/widgets/search_button.dart';
+import 'package:mcqs_generator_ai_app/widgets/search_text_in_questions_form_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/show_answers_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/show_questions_with_four_answers_only_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/shuffle_questions_widget.dart';
+import 'package:mcqs_generator_ai_app/widgets/sort_questions_button_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/subject_name_textfield_widget.dart';
 
 import 'boxed_widget.dart';
+import 'delete_all_questions_widget.dart';
 import 'entries_widget.dart';
 import 'generating_questions_progress_indicator_widget.dart';
 
@@ -70,22 +73,7 @@ class Homepage extends StatelessWidget {
                   ],
                 ),
               ),
-              Flexible(
-                child: Row(
-                  children: [
-                    Expanded(
-                        flex: 1,
-                        child: TextFormField(
-                          // enabled: controller.searchBoxEnabled.value,
-                          controller: controller.searchController,
-                          decoration: const InputDecoration(
-                              label: Text('filter questions with word',
-                                  style: TextStyle(fontSize: 10))),
-                        )),
-                    SearchButton(),
-                  ],
-                ),
-              ),
+              SearchTextInQuestionsForm(),
               const SizedBox(
                 height: 10,
               ),
@@ -127,13 +115,7 @@ class Homepage extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: Row(
                     children: [
-                      const Text(
-                        "OUTPUT",
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      const OutputTextLabelWidget(),
                       const SizedBox(
                         width: 20,
                       ),
@@ -141,17 +123,7 @@ class Homepage extends StatelessWidget {
                       const SizedBox(
                         width: 16,
                       ),
-                      Padding(
-                        padding: const EdgeInsets.all(4.0),
-                        child: MaterialButton(
-                            onPressed: controller.sortByName,
-                            child: const Row(
-                              children: [
-                                Icon(Icons.sort),
-                                Text(' Sort Questions'),
-                              ],
-                            )),
-                      ),
+                      SortQuestionsButton(),
                       ShuffleQuestionsWidget(),
                       DeleteAllQuestionsWidget(
                         deleteQuestions: (context) => deleteQuestions(context),
@@ -164,106 +136,7 @@ class Homepage extends StatelessWidget {
                   height: 0,
                   thickness: 1,
                 ),
-                Flexible(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    //child: Text('Nothing to show'),
-                    child: (controller.questions.isNotEmpty)
-                        ? ListView.builder(
-                            key: const PageStorageKey<String>('page'),
-                            itemBuilder: (context, questionIndex) {
-                              if (controller.isSearchMode.value) {
-                                String questionBody = controller
-                                        .questions[questionIndex].body?.content
-                                        ?.toLowerCase() ??
-                                    '';
-
-                                bool condition = false;
-                                if (controller.queryText.isEmpty) {
-                                  condition = false;
-                                } else {
-                                  condition = questionBody.isNotEmpty &&
-                                      controller.queryText.isNotEmpty &&
-                                      questionBody.contains(
-                                          controller.queryText.toLowerCase());
-                                }
-
-                                if (condition) {
-                                  if (controller.isFilteringFourAnswers.value) {
-                                    if (controller.questions[questionIndex]
-                                                .answerOptions !=
-                                            null &&
-                                        controller.questions[questionIndex]
-                                                .answerOptions?.length !=
-                                            4) {
-                                      return QuestionWidget(
-                                        question:
-                                            controller.questions[questionIndex],
-                                        deleteQuestion:
-                                            controller.deleteQuestion,
-                                        index: questionIndex,
-                                        showAnswers:
-                                            controller.showAnswers.value,
-                                        key: Key('$questionIndex'),
-                                      );
-                                    } else {
-                                      return Container();
-                                    }
-                                  } else {
-                                    return QuestionWidget(
-                                      question:
-                                          controller.questions[questionIndex],
-                                      deleteQuestion: controller.deleteQuestion,
-                                      index: questionIndex,
-                                      showAnswers: controller.showAnswers.value,
-                                      key: Key('$questionIndex'),
-                                    );
-                                  }
-                                } else {
-                                  return Container();
-                                }
-                              } else {
-                                if (controller.isFilteringFourAnswers.value) {
-                                  if (controller.questions[questionIndex]
-                                              .answerOptions !=
-                                          null &&
-                                      controller.questions[questionIndex]
-                                              .answerOptions?.length !=
-                                          4) {
-                                    return QuestionWidget(
-                                      question:
-                                          controller.questions[questionIndex],
-                                      deleteQuestion: controller.deleteQuestion,
-                                      index: questionIndex,
-                                      showAnswers: controller.showAnswers.value,
-                                      key: Key('$questionIndex'),
-                                    );
-                                  } else {
-                                    return Container();
-                                  }
-                                } else {
-                                  return QuestionWidget(
-                                    question:
-                                        controller.questions[questionIndex],
-                                    deleteQuestion: controller.deleteQuestion,
-                                    index: questionIndex,
-                                    showAnswers: controller.showAnswers.value,
-                                    key: Key('$questionIndex'),
-                                  );
-                                }
-                              }
-                            },
-                            itemCount: controller.questions.length,
-                          )
-                        : const Center(
-                            child: Text(
-                              'Your questions will be shown here!',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                  ),
-                ),
+                QuestionsListWidget(),
               ],
             ),
           ),
@@ -494,34 +367,6 @@ class Homepage extends StatelessWidget {
         ),
       );
     });
-  }
-}
-
-class DeleteAllQuestionsWidget extends StatelessWidget {
-  DeleteAllQuestionsWidget({
-    super.key,
-    required this.deleteQuestions,
-  });
-
-  void Function(BuildContext context) deleteQuestions;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: MaterialButton(
-        onPressed: () => deleteQuestions(context),
-        child: const Row(
-          children: [
-            Icon(
-              Icons.delete,
-              color: Colors.red,
-            ),
-            Text(' Delete Questions'),
-          ],
-        ),
-      ),
-    );
   }
 }
 
