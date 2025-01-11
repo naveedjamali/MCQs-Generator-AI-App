@@ -30,6 +30,7 @@ class AppController extends GetxController {
   late FocusNode inputFocus;
 
   RxList<Question> questions = <Question>[].obs;
+  RxList<Question> filteredQuestions = <Question>[].obs;
   RxList<String> entries = <String>[].obs;
   late TextEditingController inputController;
   late FocusNode inputFocusNode;
@@ -212,7 +213,6 @@ class AppController extends GetxController {
     String none = 'none';
     String both = "both";
     String neither = 'neither';
-    bool shuffleAnswers = true;
     for (int i = 0; i < answerOptions!.length; i++) {
       String ans =
           answerOptions[i].body?.content.toString().toLowerCase() ?? "";
@@ -220,7 +220,6 @@ class AppController extends GetxController {
           ans.contains(none) ||
           ans.contains(both) ||
           ans.contains(neither)) {
-        shuffleAnswers = false;
         return;
       }
     }
@@ -391,6 +390,16 @@ class AppController extends GetxController {
 
   void setFilteringFourOptions(value) {
     isFilteringFourAnswers.value = value;
+    if (isFilteringFourAnswers.value) {
+      filteredQuestions.clear();
+      for (var q in questions) {
+        if (q.answerOptions?.length == 4) {
+          filteredQuestions.add(q);
+        }
+      }
+    } else {
+      filteredQuestions.clear();
+    }
     update();
   }
 

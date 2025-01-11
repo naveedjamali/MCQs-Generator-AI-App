@@ -12,97 +12,105 @@ class QuestionsListWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Flexible(
-        child: Obx(
-      () => Padding(
-        padding: const EdgeInsets.all(8),
-        //child: Text('Nothing to show'),
-        child: (controller.questions.isNotEmpty)
-            ? ListView.builder(
-                key: const PageStorageKey<String>('page'),
-                itemBuilder: (context, questionIndex) {
-                  if (controller.isSearchMode.value) {
-                    String questionBody = controller
-                            .questions[questionIndex].body?.content
-                            ?.toLowerCase() ??
-                        '';
+    return Obx(
+      () {
+        bool isFilteringFourAnswers = controller.isFilteringFourAnswers.value;
+        bool searchMode = controller.isSearchMode.value;
+        bool showAnswers = controller.showAnswers.value;
+        bool condition = false;
 
-                    bool condition = false;
-                    if (controller.queryText.isEmpty) {
-                      condition = false;
-                    } else {
-                      condition = questionBody.isNotEmpty &&
-                          controller.queryText.isNotEmpty &&
-                          questionBody
-                              .contains(controller.queryText.toLowerCase());
-                    }
+        return Flexible(
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: (controller.questions.isNotEmpty)
+                ? ListView.builder(
+                    key: const PageStorageKey<String>('page'),
+                    itemBuilder: (context, questionIndex) {
+                      if (searchMode) {
+                        String questionBody = controller
+                                .questions[questionIndex].body?.content
+                                ?.toLowerCase() ??
+                            '';
 
-                    if (condition) {
-                      if (controller.isFilteringFourAnswers.value) {
-                        if (controller.questions[questionIndex].answerOptions !=
-                                null &&
-                            controller.questions[questionIndex].answerOptions
-                                    ?.length !=
-                                4) {
-                          return QuestionWidget(
-                            question: controller.questions[questionIndex],
-                            deleteQuestion: controller.deleteQuestion,
-                            index: questionIndex,
-                            showAnswers: controller.showAnswers.value,
-                            key: Key('$questionIndex'),
-                          );
+                        if (controller.queryText.isEmpty) {
+                          condition = false;
+                        } else {
+                          condition = controller.queryText.isNotEmpty &&
+                              questionBody
+                                  .contains(controller.queryText.toLowerCase());
+                        }
+
+                        if (condition) {
+                          if (isFilteringFourAnswers) {
+                            if (controller.questions[questionIndex]
+                                        .answerOptions !=
+                                    null &&
+                                controller.questions[questionIndex]
+                                        .answerOptions?.length !=
+                                    4) {
+                              return QuestionWidget(
+                                question: controller.questions[questionIndex],
+                                deleteQuestion: controller.deleteQuestion,
+                                index: questionIndex,
+                                showAnswers: showAnswers,
+                                key: Key('$questionIndex'),
+                              );
+                            } else {
+                              return Container();
+                            }
+                          } else {
+                            return QuestionWidget(
+                              question: controller.questions[questionIndex],
+                              deleteQuestion: controller.deleteQuestion,
+                              index: questionIndex,
+                              showAnswers: showAnswers,
+                              key: Key('$questionIndex'),
+                            );
+                          }
                         } else {
                           return Container();
                         }
                       } else {
-                        return QuestionWidget(
-                          question: controller.questions[questionIndex],
-                          deleteQuestion: controller.deleteQuestion,
-                          index: questionIndex,
-                          showAnswers: controller.showAnswers.value,
-                          key: Key('$questionIndex'),
-                        );
+                        if (isFilteringFourAnswers) {
+                          if (controller
+                                      .questions[questionIndex].answerOptions !=
+                                  null &&
+                              controller.questions[questionIndex].answerOptions
+                                      ?.length !=
+                                  4) {
+                            return QuestionWidget(
+                              question: controller.questions[questionIndex],
+                              deleteQuestion: controller.deleteQuestion,
+                              index: questionIndex,
+                              showAnswers: showAnswers,
+                              key: Key('$questionIndex'),
+                            );
+                          } else {
+                            return Container();
+                          }
+                        } else {
+                          return QuestionWidget(
+                            question: controller.questions[questionIndex],
+                            deleteQuestion: controller.deleteQuestion,
+                            index: questionIndex,
+                            showAnswers: showAnswers,
+                            key: Key('$questionIndex'),
+                          );
+                        }
                       }
-                    } else {
-                      return Container();
-                    }
-                  } else {
-                    if (controller.isFilteringFourAnswers.value) {
-                      if (controller.questions[questionIndex].answerOptions !=
-                              null &&
-                          controller.questions[questionIndex].answerOptions
-                                  ?.length !=
-                              4) {
-                        return QuestionWidget(
-                          question: controller.questions[questionIndex],
-                          deleteQuestion: controller.deleteQuestion,
-                          index: questionIndex,
-                          showAnswers: controller.showAnswers.value,
-                          key: Key('$questionIndex'),
-                        );
-                      } else {
-                        return Container();
-                      }
-                    } else {
-                      return QuestionWidget(
-                        question: controller.questions[questionIndex],
-                        deleteQuestion: controller.deleteQuestion,
-                        index: questionIndex,
-                        showAnswers: controller.showAnswers.value,
-                        key: Key('$questionIndex'),
-                      );
-                    }
-                  }
-                },
-                itemCount: controller.questions.length,
-              )
-            : const Center(
-                child: Text(
-                  'Your questions will be shown here!',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-      ),
-    ));
+                    },
+                    itemCount: controller.questions.length,
+                  )
+                : const Center(
+                    child: Text(
+                      'Your questions will be shown here!',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+          ),
+        );
+      },
+    );
   }
 }
