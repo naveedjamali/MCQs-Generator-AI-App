@@ -224,6 +224,7 @@ class AppController extends GetxController {
       }
     }
     answerOptions.shuffle();
+    update();
   }
 
   void copyQuestions(List<Question> temp, List<Question> mainList) {
