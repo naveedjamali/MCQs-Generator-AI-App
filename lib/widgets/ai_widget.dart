@@ -48,7 +48,7 @@ class AiWidget extends StatelessWidget {
                       controller.setGeneratingResponse(true);
 
                       try {
-                        getAIDescription(text, context);
+                        controller.getAIDescription(text, context);
 
                         controller.setInputControllerText('');
                         controller.inputFocusNode.requestFocus();
@@ -93,45 +93,5 @@ class AiWidget extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  void getAIDescription(String searchKeywords, BuildContext context) async {
-    final instructions = Content.multi([
-      TextPart('Subject: ${controller.subject.value}'),
-      TextPart('Topic: ${controller.topicID.value}'),
-      TextPart('Generate a detailed essay on the given topic'),
-      TextPart('essay length: 2000 words minimum'),
-      TextPart('essay type: in-depth'),
-      TextPart(
-          'The Essay includes: history, actions, reactions, parts, sub-parts, examples, formulas, measurements, structure, importance, inventions, discoveries, scientists, artists, uses, involvements, dates, types, subtypes, etc'),
-    ]);
-
-    controller.askAI(instructions, searchKeywords).then((generatedDescription) {
-      if (generatedDescription != null) {
-        if (generatedDescription ==
-            "GenerativeAIException: Candidate was blocked due to recitation") {
-          showDialog(
-              context: context,
-              builder: (context) {
-                controller.setGeneratingResponse(false);
-
-                return const AlertDialog(
-                  title: Text('Error'),
-                  content: Text(
-                      'GenerativeAIException: Candidate was blocked due to recitation'),
-                );
-              });
-        } else {
-          controller.getCsvResponse(generatedDescription).then(
-            (csv) {
-              controller.setCSV(csv!);
-              controller.addQuestions(context);
-
-              controller.setGeneratingResponse(false);
-            },
-          );
-        }
-      }
-    });
   }
 }

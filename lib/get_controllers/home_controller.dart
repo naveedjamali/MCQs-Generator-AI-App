@@ -317,6 +317,8 @@ class AppController extends GetxController {
         TextPart(
             'Each question should be self-contained and understandable without requiring prior access to the text.'),
         TextPart(
+            'DO NOT INCLUDE markup tags in the questions and answers e.g. <sub>, <sup> etc'),
+        TextPart(
             'CSV output format: Question ,,, Option1 ,,, Option2 ,,, Option3 ,,, Option4 ,,, CorrectAnswer'),
         TextPart('Minimum four answer options for every question'),
         TextPart(
@@ -331,6 +333,46 @@ class AppController extends GetxController {
     );
     String? csv = await askAI(ins, description);
     return csv;
+  }
+
+  void getAIDescription(String searchKeywords, BuildContext context) async {
+    final instructions = Content.multi([
+      TextPart('Subject: ${subject.value}'),
+      TextPart('Topic: ${topicID.value}'),
+      TextPart('Generate a detailed essay on the given topic'),
+      TextPart('essay length: 2000 words minimum'),
+      TextPart('essay type: in-depth'),
+      TextPart(
+          'The Essay includes: history, actions, reactions, parts, sub-parts, examples, formulas, measurements, structure, importance, inventions, discoveries, scientists, artists, uses, involvements, dates, types, subtypes, etc'),
+    ]);
+
+    askAI(instructions, searchKeywords).then((generatedDescription) {
+      if (generatedDescription != null) {
+        if (generatedDescription ==
+            "GenerativeAIException: Candidate was blocked due to recitation") {
+          showDialog(
+              context: context,
+              builder: (context) {
+                setGeneratingResponse(false);
+
+                return const AlertDialog(
+                  title: Text('Error'),
+                  content: Text(
+                      'GenerativeAIException: Candidate was blocked due to recitation'),
+                );
+              });
+        } else {
+          getCsvResponse(generatedDescription).then(
+            (csv) {
+              setCSV(csv!);
+              addQuestions(context);
+
+              setGeneratingResponse(false);
+            },
+          );
+        }
+      }
+    });
   }
 
   void setCSV(String value) {
