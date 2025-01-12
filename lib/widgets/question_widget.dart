@@ -26,107 +26,151 @@ class _QuestionWidgetState extends State<QuestionWidget> {
     final newAnswerController = TextEditingController(
       text: '',
     );
-    return ListTile(
-      title: ListTile(
-        leading: IconButton(
-            onPressed: () => editQuestion(), icon: const Icon(Icons.edit)),
-        title: GestureDetector(
-          onTap: () => setState(() {
-            showAnswers = !showAnswers;
-          }),
-          child: Text(
-            'Q ${widget.index + 1}: ${widget.question.body?.content ?? ''}',
-            softWrap: true,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
+    return Column(
+      children: [
+        Row(
+          children: [
+            IconButton(
+                onPressed: () => editQuestion(), icon: const Icon(Icons.edit)),
+            Expanded(
+              flex: 1,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: GestureDetector(
+                  onTap: () => setState(() {
+                    showAnswers = !showAnswers;
+                  }),
+                  child: Text(
+                    'Q ${widget.index + 1}: ${widget.question.body?.content ?? ''}',
+                    softWrap: true,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+            IconButton(
+                onPressed: () => widget.deleteQuestion(widget.index),
+                icon: const Icon(Icons.delete_forever_rounded)),
+          ],
         ),
-        trailing: IconButton(
-            onPressed: () => widget.deleteQuestion(widget.index),
-            icon: const Icon(Icons.delete_forever_rounded)),
-      ),
-      subtitle: widget.showAnswers || showAnswers
-          ? ReorderableListView.builder(
-              itemCount: widget.question.answerOptions!.length + 1,
-              shrinkWrap: true,
-              buildDefaultDragHandles: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemBuilder: (context, index) {
-                return (index < widget.question.answerOptions!.length)
-                    ? ListTile(
-                        key: ValueKey(index),
-                        leading: Container(
-                          width: 8,
-                          height: double.infinity,
-                          color:
-                              widget.question.answerOptions![index].isCorrect ??
-                                      false
-                                  ? Colors.green
-                                  : Colors.red[100],
-                        ),
-                        title: ListTile(
-                          leading: Switch(
-                              value: widget.question.answerOptions?[index]
-                                      .isCorrect ??
-                                  false,
-                              onChanged: (value) {
-                                setState(() {
-                                  widget.question.answerOptions?[index]
-                                      .isCorrect = value;
-                                });
-                              }),
-                          title: Text(widget.question.answerOptions?[index].body
-                                  ?.content ??
-                              ''),
-                          trailing: IconButton(
-                            onPressed: () {
-                              setState(() {
-                                widget.question.answerOptions?.remove(
-                                    widget.question.answerOptions?[index]);
-                              });
-                            },
-                            icon: const Icon(
-                              Icons.remove_circle_outline,
-                              color: Colors.red,
+        widget.showAnswers || showAnswers
+            ? ReorderableListView.builder(
+                itemCount: widget.question.answerOptions!.length + 1,
+                shrinkWrap: true,
+                buildDefaultDragHandles: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemBuilder: (context, index) {
+                  return (index < widget.question.answerOptions!.length)
+                      ? Row(
+                          key: ValueKey(index),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  left: 8, right: 32, top: 4, bottom: 4),
+                              child: Container(
+                                width: 8,
+                                height: 50,
+                                color: widget.question.answerOptions![index]
+                                            .isCorrect ??
+                                        false
+                                    ? Colors.green
+                                    : Colors.red[100],
+                              ),
                             ),
-                          ),
-                        ),
-                      )
-                    : ListTile(
-                        key: ValueKey(index),
-                        title: ListTile(
-                          leading:
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Switch(
+                                      value: widget
+                                              .question
+                                              .answerOptions?[index]
+                                              .isCorrect ??
+                                          false,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          widget.question.answerOptions?[index]
+                                              .isCorrect = value;
+                                        });
+                                      }),
+                                  const SizedBox(
+                                    width: 8,
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      widget.question.answerOptions?[index].body
+                                              ?.content ??
+                                          '',
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        widget.question.answerOptions?.remove(
+                                            widget.question
+                                                .answerOptions?[index]);
+                                      });
+                                    },
+                                    icon: const Icon(
+                                      Icons.remove_circle_outline,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(
+                              width: 40,
+                              height: 40,
+                            )
+                          ],
+                        )
+                      : Padding(
+                          key: ValueKey(index),
+                          padding: const EdgeInsets.all(8),
+                          child: Row(
+                            children: [
                               const Text('Add new answer and press Enter:'),
-                          title: TextField(
-                            textInputAction: TextInputAction.go,
-                            controller: newAnswerController,
-                            onSubmitted: (value) {
-                              if (newAnswerController.text.isNotEmpty) {
-                                AnswerOptions newAns = AnswerOptions();
-                                newAns.isCorrect = false;
-                                newAns.body = Body(
-                                    contentType: 'PLAIN',
-                                    content: newAnswerController.text);
-                                setState(() {
-                                  widget.question.answerOptions?.add(newAns);
-                                });
-                              }
-                            },
+                              const SizedBox(
+                                width: 10,
+                              ),
+                              Expanded(
+                                child: TextField(
+                                  textInputAction: TextInputAction.go,
+                                  controller: newAnswerController,
+                                  onSubmitted: (value) {
+                                    if (newAnswerController.text.isNotEmpty) {
+                                      AnswerOptions newAns = AnswerOptions();
+                                      newAns.isCorrect = false;
+                                      newAns.body = Body(
+                                          contentType: 'PLAIN',
+                                          content: newAnswerController.text);
+                                      setState(() {
+                                        widget.question.answerOptions
+                                            ?.add(newAns);
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      );
-              },
-              onReorder: (int oldIndex, int newIndex) {
-                setState(() {
-                  if (newIndex > oldIndex) {
-                    newIndex -= 1;
-                  }
-                  final item =
-                      widget.question.answerOptions?.removeAt(oldIndex);
-                  widget.question.answerOptions?.insert(newIndex, item!);
-                });
-              },
-            )
-          : Container(),
+                        );
+                },
+                onReorder: (int oldIndex, int newIndex) {
+                  setState(() {
+                    if (newIndex > oldIndex) {
+                      newIndex -= 1;
+                    }
+                    final item =
+                        widget.question.answerOptions?.removeAt(oldIndex);
+                    widget.question.answerOptions?.insert(newIndex, item!);
+                  });
+                },
+              )
+            : Container(),
+      ],
     );
   }
 
