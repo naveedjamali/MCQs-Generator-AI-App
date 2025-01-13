@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:mcqs_generator_ai_app/get_controllers/home_controller.dart';
 
 class AiWidget extends StatelessWidget {

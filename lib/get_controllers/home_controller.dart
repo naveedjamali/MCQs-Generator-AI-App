@@ -6,12 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models.dart';
 
 class AppController extends GetxController {
   RxString queryText = "".obs;
-
+  RxString API_KEY = "".obs;
   RxString csv = ''.obs;
   RxString topicID = 'Computer System'.obs;
   RxString subject = 'Computer Studies'.obs;
@@ -66,8 +67,25 @@ class AppController extends GetxController {
     scrollOffsetController = ScrollOffsetController();
     itemPositionsListener = ItemPositionsListener.create();
     scrollOffsetListener = ScrollOffsetListener.create();
+    readApiKeyFromStorage();
 
     super.onInit();
+  }
+
+  Future<String> readApiKeyFromStorage() async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    String key = sp.getString("API") ?? "";
+    API_KEY.value = key;
+
+    return key;
+  }
+
+  Future<bool> saveApiKeyInStorage(String apiKey) async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    bool saved = await sp.setString("API", apiKey);
+    API_KEY.value = apiKey;
+    update();
+    return saved;
   }
 
   void addQuestions(BuildContext context) {
@@ -269,11 +287,10 @@ class AppController extends GetxController {
 
   Future<String?> askAI(Content instructions, String query) async {
     // Access your API key as an environment variable (see "Set up your API key" above)
-    const apiKey = 'AIzaSyAP5HZ3hfOAivzE5ab5zhkHw7NFwqueK0Q';
 
     final model = GenerativeModel(
       model: 'gemini-1.5-flash-002',
-      apiKey: apiKey,
+      apiKey: API_KEY.value,
       safetySettings: [
         SafetySetting(
           HarmCategory.sexuallyExplicit,
