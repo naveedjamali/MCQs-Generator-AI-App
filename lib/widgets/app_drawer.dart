@@ -31,9 +31,24 @@ class _AppDrawerState extends State<AppDrawer> {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      child: ListView(
+      child: Column(
         children: [
-          const DrawerHeader(child: Text('MCQs Generator AI APP')),
+          const DrawerHeader(
+            child: Column(
+              children: [
+                Image(
+                  image: AssetImage('assets/images/icon.png'),
+                  width: 100,
+                  height: 100,
+                ),
+                Center(
+                    child: Text(
+                  'MCQs Generator AI APP',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                )),
+              ],
+            ),
+          ),
           ListTile(
             title: const Padding(
               padding: EdgeInsets.all(8.0),
@@ -47,7 +62,14 @@ class _AppDrawerState extends State<AppDrawer> {
               ),
             ),
           ),
-          const ApiKeyWidget()
+          const Divider(),
+          const ApiKeyWidget(),
+          const Divider(),
+          const Expanded(child: Spacer()),
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Text('Powered by: Effordea'),
+          ),
         ],
       ),
     );

@@ -160,7 +160,7 @@ class Homepage extends StatelessWidget {
           appBar: AppBar(
             backgroundColor: Colors.green,
             title: const Text(
-              "MCQs Generator AI App | Govt. Boys Degree College Nawabshah ",
+              "MCQs Generator AI App",
               style: TextStyle(color: Colors.white),
             ),
             actions: [
