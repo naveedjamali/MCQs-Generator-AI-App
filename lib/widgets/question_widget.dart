@@ -21,6 +21,9 @@ class QuestionWidget extends StatefulWidget {
 
 class _QuestionWidgetState extends State<QuestionWidget> {
   bool showAnswers = false;
+  final questionStyle =
+      const TextStyle(fontSize: 16, fontWeight: FontWeight.bold);
+  final answerStyle = const TextStyle(fontSize: 16);
 
   @override
   Widget build(BuildContext context) {
@@ -49,11 +52,11 @@ class _QuestionWidgetState extends State<QuestionWidget> {
                       ? Text(
                           'Q ${widget.index + 1}: ${widget.question.body?.content ?? ''}',
                           softWrap: true,
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                          style: questionStyle,
                         )
                       : Expanded(
-                          child: getLatexWidget(widget.question.body?.content)),
+                          child: getLatexWidget(
+                              widget.question.body?.content, answerStyle)),
                 ),
               ),
             ),
@@ -69,7 +72,9 @@ class _QuestionWidgetState extends State<QuestionWidget> {
                 buildDefaultDragHandles: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemBuilder: (context, index) {
-                  return (index < widget.question.answerOptions!.length)
+                  bool isAnswer = index < widget.question.answerOptions!.length;
+
+                  return (isAnswer)
                       ? Row(
                           key: ValueKey(index),
                           children: [
@@ -92,12 +97,30 @@ class _QuestionWidgetState extends State<QuestionWidget> {
                                     width: 8,
                                   ),
                                   Expanded(
-                                    child: Text(
-                                      widget.question.answerOptions?[index].body
-                                              ?.content ??
-                                          '',
-                                      style: const TextStyle(fontSize: 16),
-                                    ),
+                                    child: (widget
+                                                .question
+                                                .answerOptions?[index]
+                                                .body
+                                                ?.contentType
+                                                ?.toLowerCase() ==
+                                            'plain')
+                                        ? Text(
+                                            widget
+                                                    .question
+                                                    .answerOptions?[index]
+                                                    .body
+                                                    ?.content ??
+                                                '',
+                                            style:
+                                                const TextStyle(fontSize: 16),
+                                          )
+                                        : getLatexWidget(
+                                            widget
+                                                .question
+                                                .answerOptions?[index]
+                                                .body
+                                                ?.content,
+                                            const TextStyle(fontSize: 16)),
                                   ),
                                   IconButton(
                                     onPressed: () {
@@ -169,10 +192,10 @@ class _QuestionWidgetState extends State<QuestionWidget> {
     );
   }
 
-  getLatexWidget(String? text) {
+  getLatexWidget(String? text, TextStyle textStyle) {
     final longEq = Math.tex(
       text!,
-      textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      textStyle: textStyle,
     );
     final breakResult = longEq.texBreak(
         enforceNoBreak: false, binOpPenalty: 100, relPenalty: 100);
