@@ -30,7 +30,35 @@ class AppController extends GetxController {
   late FocusNode subjectFocus;
   late FocusNode inputFocus;
 
-  RxList<Question> questions = <Question>[].obs;
+  RxList<Question> questions = <Question>[
+    // Question(
+    //     body: Body(
+    //         content:
+    //             "What is the formula of water H<sub>2</sub> and x<sup>2</sup>: ",
+    //         contentType: "PLAIN"),
+    //     answerOptions: [
+    //       AnswerOptions(
+    //         body: Body(content: "H<sub>2</sub>O", contentType: "PLAIN"),
+    //         isCorrect: true,
+    //       ),
+    //       AnswerOptions(
+    //         body: Body(content: "H<sup>2</sup>O", contentType: "PLAIN"),
+    //         isCorrect: true,
+    //       ),
+    //       AnswerOptions(
+    //         body: Body(content: "H<sub>5</sub>O", contentType: "PLAIN"),
+    //         isCorrect: true,
+    //       ),
+    //       AnswerOptions(
+    //         body: Body(content: "H<sup>8</sup>O", contentType: "PLAIN"),
+    //         isCorrect: true,
+    //       ),
+    //     ],
+    //     assignedPoints: 1,
+    //     status: "ACTIVE",
+    //     subjectId: "Science",
+    //     topicId: "Chemistry")
+  ].obs;
   RxList<Question> filteredQuestions = <Question>[].obs;
   RxList<String> entries = <String>[].obs;
   late TextEditingController inputController;
@@ -133,6 +161,8 @@ class AppController extends GetxController {
 
       Body qBody = Body(contentType: 'PLAIN', content: '${row[0]}');
       q.body = qBody;
+      checkBodyForKatex(qBody);
+
       q.answerOptions = [];
 
       for (int i = 1; i < row.length; i++) {
@@ -142,7 +172,10 @@ class AppController extends GetxController {
             body: Body(content: row[i].toString().trim(), contentType: 'PLAIN'),
             // isCorrect: row[i] == row[row.length - 1]);
             isCorrect: false);
+
         // check if the answer is already added.
+
+        checkBodyForKatex(answer.body);
 
         if (containsAnswer(q.answerOptions ?? [], answer.body!.content)) {
           for (int i = 0; i < q.answerOptions!.length; i++) {
@@ -322,33 +355,35 @@ class AppController extends GetxController {
   }
 
   Future<String?> getCsvResponse(String description) async {
-    final ins = Content.multi(
-      [
-        TextPart(
-            'Generate clear and concise minimum 60 MCQs in the csv format'),
-        TextPart('use three commas \',,,\' as delimiter'),
-        TextPart(
-            'reconfirm that CSV values are separated with three commas ,,, '),
-        TextPart(
-            'Question text should NOT refer to the \'text\' or \'essay\' or \'passage\'. For example: What is the primary \'focus\' or \'main idea\' or \'conclusion\' of this essay or text or passage?'),
-        TextPart(
-            'Each question should be self-contained and understandable without requiring prior access to the text.'),
-        TextPart(
-            'DO NOT INCLUDE markup tags in the questions and answers e.g. <sub>, <sup> etc'),
-        TextPart(
-            'CSV output format: Question ,,, Option1 ,,, Option2 ,,, Option3 ,,, Option4 ,,, CorrectAnswer'),
-        TextPart('Minimum four answer options for every question'),
-        TextPart(
-            'Example correct output: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, Islamabad'),
-        TextPart(
-            'Example incorrect output: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, C'),
-        TextPart(
-            'Example incorrect output with two commas as delimiter: What is the capital of Pakistan ,, Hyderabad ,, Karachi ,, Islamabad ,, Peshawar ,, Islamabad'),
-        TextPart(
-            'Recheck output with ,,, only, output should not contain ,, or , , or ,,,, or , , , delimiters.'),
-      ],
-    );
-    String? csv = await askAI(ins, description);
+    // final ins = Content.multi(
+    //   [
+    //     TextPart(
+    //         'Generate clear and concise minimum 60 MCQs in the csv format'),
+    //     TextPart('use three commas \',,,\' as delimiter'),
+    //     TextPart(
+    //         'reconfirm that CSV values are separated with three commas ,,, '),
+    //     TextPart(
+    //         'Question text should NOT refer to the \'text\' or \'essay\' or \'passage\'. For example: What is the primary \'focus\' or \'main idea\' or \'conclusion\' of this essay or text or passage?'),
+    //     TextPart(
+    //         'Each question should be self-contained and understandable without requiring prior access to the text.'),
+    //     TextPart(
+    //         'DO NOT INCLUDE markup tags in the questions and answers e.g. <sub>, <sup> etc'),
+    //     TextPart(
+    //         'CSV output format: Question ,,, Option1 ,,, Option2 ,,, Option3 ,,, Option4 ,,, CorrectAnswer'),
+    //     TextPart('Minimum four answer options for every question'),
+    //     TextPart(
+    //         'Example correct output: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, Islamabad'),
+    //     TextPart(
+    //         'Example incorrect output: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, C'),
+    //     TextPart(
+    //         'Example incorrect output with two commas as delimiter: What is the capital of Pakistan ,, Hyderabad ,, Karachi ,, Islamabad ,, Peshawar ,, Islamabad'),
+    //     TextPart(
+    //         'Recheck output with ,,, only, output should not contain ,, or , , or ,,,, or , , , delimiters.'),
+    //   ],
+    // );
+    // String? csv = await askAI(ins, description);
+    String csv =
+        "What is the formula of Water H<sub>2</sub>O, and in algebra a multiplied by a = a<sup>2</sup> , so how is it possible? What is the formula of Water H<sub>2</sub>O, and in algebra a multiplied by a = a<sup>2</sup> , so how is it possible?,,,H<sub>5</sub>O,,,H<sub>2</sub>SO<sub>4</sub>,,,H<sup>2</sup>O,,,H<sub>2</sub>O,,,H<sub>2</sub>O";
     return csv;
   }
 
@@ -470,5 +505,42 @@ class AppController extends GetxController {
 
   bool getSearchMode() {
     return isSearchMode.value;
+  }
+
+  String convertHtmlToFlutterKatex(String html) {
+    // Replace <sub> tags with KaTeX subscript syntax
+    String katex = html.replaceAllMapped(
+      RegExp(r'<sub>(.*?)<\/sub>'),
+      (match) => '_{${match.group(1)}}',
+    );
+
+    // Replace <sup> tags with KaTeX superscript syntax
+    katex = katex.replaceAllMapped(
+      RegExp(r'<sup>(.*?)<\/sup>'),
+      (match) => '^{${match.group(1)}}',
+    );
+
+    // Wrap normal text outside of math mode with \text{}
+    katex = katex.replaceAllMapped(
+      RegExp(r'([^_^{}<>]+)'),
+      (match) => '\\text{${match.group(1)?.trim()}}',
+    );
+
+    return katex;
+  }
+
+  void checkBodyForKatex(Body? body) {
+    String questionText = body?.content ?? "";
+    if (questionText.isNotEmpty) {
+      bool isHtml = questionText.toLowerCase().contains("<sub>") ||
+          questionText.toLowerCase().contains("</sub>") ||
+          questionText.toLowerCase().contains("<sup>") ||
+          questionText.toLowerCase().contains("</sup>");
+      if (isHtml) {
+        String html = questionText;
+        body?.content = convertHtmlToFlutterKatex(html);
+        body?.contentType = "katex";
+      }
+    }
   }
 }

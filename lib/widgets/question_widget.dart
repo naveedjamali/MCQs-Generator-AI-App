@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:mcqs_generator_ai_app/models.dart';
 
 class QuestionWidget extends StatefulWidget {
@@ -26,6 +27,10 @@ class _QuestionWidgetState extends State<QuestionWidget> {
     final newAnswerController = TextEditingController(
       text: '',
     );
+
+    bool plainText =
+        widget.question.body?.contentType?.toLowerCase() == "plain";
+
     return Column(
       children: [
         Row(
@@ -40,12 +45,15 @@ class _QuestionWidgetState extends State<QuestionWidget> {
                   onTap: () => setState(() {
                     showAnswers = !showAnswers;
                   }),
-                  child: Text(
-                    'Q ${widget.index + 1}: ${widget.question.body?.content ?? ''}',
-                    softWrap: true,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                  child: plainText
+                      ? Text(
+                          'Q ${widget.index + 1}: ${widget.question.body?.content ?? ''}',
+                          softWrap: true,
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        )
+                      : Expanded(
+                          child: getLatexWidget(widget.question.body?.content)),
                 ),
               ),
             ),
@@ -65,23 +73,10 @@ class _QuestionWidgetState extends State<QuestionWidget> {
                       ? Row(
                           key: ValueKey(index),
                           children: [
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                  left: 8, right: 32, top: 4, bottom: 4),
-                              child: Container(
-                                width: 8,
-                                height: 50,
-                                color: widget.question.answerOptions![index]
-                                            .isCorrect ??
-                                        false
-                                    ? Colors.green
-                                    : Colors.red[100],
-                              ),
-                            ),
                             Expanded(
                               child: Row(
                                 children: [
-                                  Switch(
+                                  Checkbox(
                                       value: widget
                                               .question
                                               .answerOptions?[index]
@@ -172,6 +167,19 @@ class _QuestionWidgetState extends State<QuestionWidget> {
             : Container(),
       ],
     );
+  }
+
+  getLatexWidget(String? text) {
+    final longEq = Math.tex(
+      text!,
+      textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+    );
+    final breakResult = longEq.texBreak(
+        enforceNoBreak: false, binOpPenalty: 100, relPenalty: 100);
+    final widget = Wrap(
+      children: breakResult.parts,
+    );
+    return widget;
   }
 
   void editQuestion() {
