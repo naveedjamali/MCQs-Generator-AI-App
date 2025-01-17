@@ -355,35 +355,33 @@ class AppController extends GetxController {
   }
 
   Future<String?> getCsvResponse(String description) async {
-    // final ins = Content.multi(
-    //   [
-    //     TextPart(
-    //         'Generate clear and concise minimum 60 MCQs in the csv format'),
-    //     TextPart('use three commas \',,,\' as delimiter'),
-    //     TextPart(
-    //         'reconfirm that CSV values are separated with three commas ,,, '),
-    //     TextPart(
-    //         'Question text should NOT refer to the \'text\' or \'essay\' or \'passage\'. For example: What is the primary \'focus\' or \'main idea\' or \'conclusion\' of this essay or text or passage?'),
-    //     TextPart(
-    //         'Each question should be self-contained and understandable without requiring prior access to the text.'),
-    //     TextPart(
-    //         'DO NOT INCLUDE markup tags in the questions and answers e.g. <sub>, <sup> etc'),
-    //     TextPart(
-    //         'CSV output format: Question ,,, Option1 ,,, Option2 ,,, Option3 ,,, Option4 ,,, CorrectAnswer'),
-    //     TextPart('Minimum four answer options for every question'),
-    //     TextPart(
-    //         'Example correct output: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, Islamabad'),
-    //     TextPart(
-    //         'Example incorrect output: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, C'),
-    //     TextPart(
-    //         'Example incorrect output with two commas as delimiter: What is the capital of Pakistan ,, Hyderabad ,, Karachi ,, Islamabad ,, Peshawar ,, Islamabad'),
-    //     TextPart(
-    //         'Recheck output with ,,, only, output should not contain ,, or , , or ,,,, or , , , delimiters.'),
-    //   ],
-    // );
-    // String? csv = await askAI(ins, description);
-    String csv =
-        "What is the formula of Water H<sub>2</sub>O, and in algebra a multiplied by a = a<sup>2</sup> , so how is it possible? What is the formula of Water H<sub>2</sub>O, and in algebra a multiplied by a = a<sup>2</sup> , so how is it possible?,,,H<sub>5</sub>O,,,H<sub>2</sub>SO<sub>4</sub>,,,H<sup>2</sup>O,,,H<sub>2</sub>O,,,H<sub>2</sub>O";
+    final ins = Content.multi(
+      [
+        TextPart(
+            'Generate clear and concise minimum 60 MCQs in the csv format'),
+        TextPart('use three commas \',,,\' as delimiter'),
+        TextPart(
+            'reconfirm that CSV values are separated with three commas ,,, '),
+        TextPart(
+            'Question text should NOT refer to the \'text\' or \'essay\' or \'passage\'. For example: What is the primary \'focus\' or \'main idea\' or \'conclusion\' of this essay or text or passage?'),
+        TextPart(
+            'Each question should be self-contained and understandable without requiring prior access to the text.'),
+        TextPart(
+            'DO NOT INCLUDE markup tags in the questions and answers e.g. <sub>, <sup> etc'),
+        TextPart(
+            'CSV output format: Question ,,, Option1 ,,, Option2 ,,, Option3 ,,, Option4 ,,, CorrectAnswer'),
+        TextPart('Minimum four answer options for every question'),
+        TextPart(
+            'Example correct output: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, Islamabad'),
+        TextPart(
+            'Example incorrect output: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, C'),
+        TextPart(
+            'Example incorrect output with two commas as delimiter: What is the capital of Pakistan ,, Hyderabad ,, Karachi ,, Islamabad ,, Peshawar ,, Islamabad'),
+        TextPart(
+            'Recheck output with ,,, only, output should not contain ,, or , , or ,,,, or , , , delimiters.'),
+      ],
+    );
+    String? csv = await askAI(ins, description);
     return csv;
   }
 
