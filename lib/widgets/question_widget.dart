@@ -62,12 +62,12 @@ class _QuestionWidgetState extends State<QuestionWidget> {
                   }),
                   child: plainText
                       ? Text(
-                          'Q ${widget.index + 1}: ${widget.question.body?.content ?? ''}',
+                          '${widget.index + 1}: ${widget.question.body?.content ?? ''}',
                           style: questionStyle,
                         )
                       : Row(
                           children: [
-                            Text('Q ${widget.index + 1}: '),
+                            Text('${widget.index + 1}: '),
                             Expanded(
                                 child: getLatexWidget(
                                     widget.question.body?.content,
