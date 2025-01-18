@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:mcqs_generator_ai_app/models.dart';
 
@@ -39,7 +40,18 @@ class _QuestionWidgetState extends State<QuestionWidget> {
         Row(
           children: [
             IconButton(
-                onPressed: () => editQuestion(), icon: const Icon(Icons.edit)),
+                onPressed: () => editQuestion(),
+                icon: const Icon(
+                  Icons.edit,
+                  color: Colors.grey,
+                )),
+            IconButton(
+                onPressed: () =>
+                    copyText(widget.question.body!.content.toString()),
+                icon: const Icon(
+                  Icons.copy,
+                  color: Colors.grey,
+                )),
             Expanded(
               flex: 1,
               child: Padding(
@@ -49,7 +61,7 @@ class _QuestionWidgetState extends State<QuestionWidget> {
                     showAnswers = !showAnswers;
                   }),
                   child: plainText
-                      ? SelectableText(
+                      ? Text(
                           'Q ${widget.index + 1}: ${widget.question.body?.content ?? ''}',
                           style: questionStyle,
                         )
@@ -67,7 +79,10 @@ class _QuestionWidgetState extends State<QuestionWidget> {
             ),
             IconButton(
                 onPressed: () => widget.deleteQuestion(widget.index),
-                icon: const Icon(Icons.delete_forever_rounded)),
+                icon: const Icon(
+                  Icons.delete_forever_rounded,
+                  color: Colors.grey,
+                )),
           ],
         ),
         widget.showAnswers || showAnswers
@@ -87,17 +102,31 @@ class _QuestionWidgetState extends State<QuestionWidget> {
                               child: Row(
                                 children: [
                                   Checkbox(
-                                      value: widget
+                                    value: widget.question.answerOptions?[index]
+                                            .isCorrect ??
+                                        false,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        widget.question.answerOptions?[index]
+                                            .isCorrect = value;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(
+                                    width: 8,
+                                  ),
+                                  IconButton(
+                                      onPressed: () => copyText(widget
                                               .question
                                               .answerOptions?[index]
-                                              .isCorrect ??
-                                          false,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          widget.question.answerOptions?[index]
-                                              .isCorrect = value;
-                                        });
-                                      }),
+                                              .body
+                                              ?.content!
+                                              .toString() ??
+                                          ''),
+                                      icon: const Icon(
+                                        Icons.copy,
+                                        color: Colors.grey,
+                                      )),
                                   const SizedBox(
                                     width: 8,
                                   ),
@@ -109,7 +138,7 @@ class _QuestionWidgetState extends State<QuestionWidget> {
                                                 ?.contentType
                                                 ?.toLowerCase() ==
                                             'plain')
-                                        ? SelectableText(
+                                        ? Text(
                                             widget
                                                     .question
                                                     .answerOptions?[index]
@@ -208,6 +237,17 @@ class _QuestionWidgetState extends State<QuestionWidget> {
       children: breakResult.parts,
     );
     return widget;
+  }
+
+  void copyText(String text) {
+    Clipboard.setData(ClipboardData(text: text));
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Center(child: Text('Copied on Clipboard')),
+        duration: Duration(milliseconds: 500),
+      ),
+    );
   }
 
   void editQuestion() {
