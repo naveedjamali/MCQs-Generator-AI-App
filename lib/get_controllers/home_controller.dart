@@ -30,35 +30,7 @@ class AppController extends GetxController {
   late FocusNode subjectFocus;
   late FocusNode inputFocus;
 
-  RxList<Question> questions = <Question>[
-    // Question(
-    //     body: Body(
-    //         content:
-    //             "What is the formula of water H<sub>2</sub> and x<sup>2</sup>: ",
-    //         contentType: "PLAIN"),
-    //     answerOptions: [
-    //       AnswerOptions(
-    //         body: Body(content: "H<sub>2</sub>O", contentType: "PLAIN"),
-    //         isCorrect: true,
-    //       ),
-    //       AnswerOptions(
-    //         body: Body(content: "H<sup>2</sup>O", contentType: "PLAIN"),
-    //         isCorrect: true,
-    //       ),
-    //       AnswerOptions(
-    //         body: Body(content: "H<sub>5</sub>O", contentType: "PLAIN"),
-    //         isCorrect: true,
-    //       ),
-    //       AnswerOptions(
-    //         body: Body(content: "H<sup>8</sup>O", contentType: "PLAIN"),
-    //         isCorrect: true,
-    //       ),
-    //     ],
-    //     assignedPoints: 1,
-    //     status: "ACTIVE",
-    //     subjectId: "Science",
-    //     topicId: "Chemistry")
-  ].obs;
+  RxList<Question> questions = <Question>[].obs;
   RxList<Question> filteredQuestions = <Question>[].obs;
   RxList<String> entries = <String>[].obs;
   late TextEditingController inputController;

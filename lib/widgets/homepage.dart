@@ -318,6 +318,13 @@ class Homepage extends StatelessWidget {
           controller.subjectController.text = firstQuestion.subjectId ?? "";
           controller.topicController.text = firstQuestion.topicId ?? "";
 
+          for (var q in loadedQuestions) {
+            controller.checkBodyForKatex(q.body);
+            q.answerOptions?.forEach((a) {
+              controller.checkBodyForKatex(a.body);
+            });
+          }
+
           controller.questions.addAll(loadedQuestions);
 
           showDialog(
