@@ -49,14 +49,19 @@ class _QuestionWidgetState extends State<QuestionWidget> {
                     showAnswers = !showAnswers;
                   }),
                   child: plainText
-                      ? Text(
+                      ? SelectableText(
                           'Q ${widget.index + 1}: ${widget.question.body?.content ?? ''}',
-                          softWrap: true,
                           style: questionStyle,
                         )
-                      : Expanded(
-                          child: getLatexWidget(
-                              widget.question.body?.content, answerStyle)),
+                      : Row(
+                          children: [
+                            Text('Q ${widget.index + 1}: '),
+                            Expanded(
+                                child: getLatexWidget(
+                                    widget.question.body?.content,
+                                    answerStyle)),
+                          ],
+                        ),
                 ),
               ),
             ),
@@ -104,7 +109,7 @@ class _QuestionWidgetState extends State<QuestionWidget> {
                                                 ?.contentType
                                                 ?.toLowerCase() ==
                                             'plain')
-                                        ? Text(
+                                        ? SelectableText(
                                             widget
                                                     .question
                                                     .answerOptions?[index]
