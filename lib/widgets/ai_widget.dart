@@ -48,6 +48,7 @@ class AiWidget extends StatelessWidget {
 
                       try {
                         controller.getAIDescription(text, context);
+                        controller.getAIDescription(text, context);
 
                         controller.setInputControllerText('');
                         controller.inputFocusNode.requestFocus();
