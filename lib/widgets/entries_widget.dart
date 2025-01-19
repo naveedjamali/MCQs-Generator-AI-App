@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../get_controllers/home_controller.dart';
 
 class EntriesWidget extends StatelessWidget {
@@ -14,9 +15,13 @@ class EntriesWidget extends StatelessWidget {
     return Obx(() => ListView.builder(
           itemCount: controller.entries.length,
           itemBuilder: (context, index) {
-            return ListTile(
-              title: SelectableText(
+            return Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: SelectableText(
                 controller.entries[index],
+                style: const TextStyle(
+                  fontSize: 16,
+                ),
               ),
             );
           },

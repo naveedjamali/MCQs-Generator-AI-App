@@ -517,4 +517,11 @@ class AppController extends GetxController {
       }
     }
   }
+
+  void setSearchText(String text) {
+    setSearchMode(false);
+    setSearchMode(true);
+    queryText.value = text;
+    update();
+  }
 }

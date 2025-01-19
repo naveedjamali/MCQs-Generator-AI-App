@@ -80,8 +80,8 @@ class Homepage extends StatelessWidget {
               Boxed(
                 child: AiWidget(),
               ),
-              Flexible(
-                flex: 1,
+              Expanded(
+                flex: 5,
                 child: EntriesWidget(),
               ),
             ],
