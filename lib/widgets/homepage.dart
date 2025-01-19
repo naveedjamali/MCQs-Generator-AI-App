@@ -319,8 +319,10 @@ class Homepage extends StatelessWidget {
           controller.topicController.text = firstQuestion.topicId ?? "";
 
           for (var q in loadedQuestions) {
+            q.body?.content = UtilFunctions.removeCommas(q.body!.content!);
             controller.checkBodyForKatex(q.body);
             q.answerOptions?.forEach((a) {
+              a.body?.content = UtilFunctions.removeCommas(a.body!.content!);
               controller.checkBodyForKatex(a.body);
             });
           }

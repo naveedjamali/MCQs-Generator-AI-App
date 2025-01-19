@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:mcqs_generator_ai_app/functions/util_functions.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -131,7 +132,8 @@ class AppController extends GetxController {
       //Create question
       Question q = Question();
 
-      Body qBody = Body(contentType: 'PLAIN', content: '${row[0]}');
+      Body qBody = Body(
+          contentType: 'PLAIN', content: UtilFunctions.removeCommas(row[0]));
       q.body = qBody;
       checkBodyForKatex(qBody);
 
@@ -141,7 +143,9 @@ class AppController extends GetxController {
         // create answer option.
 
         AnswerOptions answer = AnswerOptions(
-            body: Body(content: row[i].toString().trim(), contentType: 'PLAIN'),
+            body: Body(
+                content: UtilFunctions.removeCommas(row[i].toString().trim()),
+                contentType: 'PLAIN'),
             // isCorrect: row[i] == row[row.length - 1]);
             isCorrect: false);
 

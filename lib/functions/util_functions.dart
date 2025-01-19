@@ -119,4 +119,11 @@ class UtilFunctions {
 
 // jsonFileIo.writeJson('$subjectID-$topicID', jsonEncode(questions));
   };
+
+  static String removeCommas(String original) {
+    // Regular expression to remove commas at the beginning
+    RegExp regex = RegExp(r'^,+');
+    String newString = original.replaceAll(regex, '');
+    return newString;
+  }
 }
