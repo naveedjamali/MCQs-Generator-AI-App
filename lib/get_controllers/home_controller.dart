@@ -513,7 +513,7 @@ class AppController extends GetxController {
       if (isHtml) {
         String html = questionText;
         body?.content = convertHtmlToFlutterKatex(html);
-        body?.contentType = "katex";
+        body?.contentType = "KATEX";
       }
     }
   }
