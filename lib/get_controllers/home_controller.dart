@@ -298,7 +298,7 @@ class AppController extends GetxController {
     // Access your API key as an environment variable (see "Set up your API key" above)
 
     final model = GenerativeModel(
-      model: 'gemini-1.5-flash-002',
+      model: 'gemini-2.0-flash',
       apiKey: API_KEY.value,
       safetySettings: [
         SafetySetting(
