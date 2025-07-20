@@ -77,6 +77,10 @@ class UtilFunctions {
             .toLowerCase();
 
     File file = File(filePath);
+    final directory = file.parent;
+    if (!(await directory.exists())) {
+      await directory.create(recursive: true); // creates all missing folders
+    }
 
     if (saveAsJSON) {
       for (Question q in questionsList) {

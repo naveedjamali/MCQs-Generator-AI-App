@@ -165,36 +165,6 @@ class Homepage extends StatelessWidget {
             ),
             actions: [
               GeneratingQuestionsProgressIndicator(),
-              CopyButtonWidget(
-                callBack: () => copyQuestionsAsText(context),
-                label: 'Copy Text',
-              ),
-              CopyButtonWidget(
-                callBack: () => copyQuestionsAsJSON(context),
-                label: 'Copy JSON',
-              ),
-              if (!kIsWeb)
-                SaveButtonWidget(
-                    label: 'Save Text',
-                    onPressed: () {
-                      UtilFunctions.saveMCQs(
-                          controller.subject.value,
-                          controller.topicID.value,
-                          controller.questions,
-                          context,
-                          false);
-                    }),
-              if (!kIsWeb)
-                SaveButtonWidget(
-                    label: 'Save JSON',
-                    onPressed: () {
-                      UtilFunctions.saveMCQs(
-                          controller.subject.value,
-                          controller.topicID.value,
-                          controller.questions,
-                          context,
-                          true);
-                    }),
             ],
           ),
           body: Column(
@@ -216,11 +186,11 @@ class Homepage extends StatelessWidget {
 
   void showQuestionsCopiedMessageOnScreen(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      snackBarAnimationStyle: AnimationStyle(
-          duration: const Duration(seconds: 1),
+      snackBarAnimationStyle: const AnimationStyle(
+          duration: Duration(seconds: 1),
           curve: Curves.easeIn,
           reverseCurve: Curves.bounceIn,
-          reverseDuration: const Duration(seconds: 1)),
+          reverseDuration: Duration(seconds: 1)),
       SnackBar(
         duration: const Duration(seconds: 2),
         content: Text(

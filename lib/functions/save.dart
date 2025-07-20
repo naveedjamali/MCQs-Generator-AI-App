@@ -50,55 +50,71 @@ class Save {
 
   static Function saveMCQs = (String subjectID, String topicID,
       List<Question> questions, BuildContext context, bool saveAsJSON) async {
-    String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Choose a location to save the file',
-    );
-    if (selectedDirectory == null) {
+    try {
+      String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: 'Choose a location to save the file',
+      );
+      if (selectedDirectory == null) {
 //user canceled the picker
-      return;
-    }
+        return;
+      }
 
 // Create a file in the selected directory
-    String filePath =
-        '$selectedDirectory/subject_$subjectID-topic_$topicID-questions_${questions.length}.${saveAsJSON ? 'json' : 'txt'}'
-            .toLowerCase();
+      String filePath =
+          '$selectedDirectory/topic_$topicID-subject_$subjectID-questions_${questions.length}.${saveAsJSON ? 'json' : 'txt'}'
+              .toLowerCase();
 
-    File file = File(filePath);
+      File file = File(filePath);
 
-    if (saveAsJSON) {
-      await file.writeAsString(jsonEncode(questions));
-    } else {
-      await file.writeAsString(questionToText(subjectID, topicID, questions));
-    }
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Examiter'),
-          icon: const Icon(
-            Icons.download_for_offline_sharp,
-            color: Colors.green,
-          ),
-          content: Column(
-            children: [
-              const Text('File saved successfully'),
+      if (saveAsJSON) {
+        await file.writeAsString(jsonEncode(questions));
+      } else {
+        await file.writeAsString(questionToText(subjectID, topicID, questions));
+      }
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Examiter'),
+            icon: const Icon(
+              Icons.download_for_offline_sharp,
+              color: Colors.green,
+            ),
+            content: Column(
+              children: [
+                const Text('File saved successfully'),
+                TextButton(
+                    onPressed: () {
+                      Uri uri = Uri.file(filePath);
+                      launchUrl(uri);
+                      Navigator.of(context).pop();
+                    },
+                    child: Text(filePath)),
+              ],
+            ),
+            actions: [
               TextButton(
-                  onPressed: () {
-                    Uri uri = Uri.file(filePath);
-                    launchUrl(uri);
-                    Navigator.of(context).pop();
-                  },
-                  child: Text(filePath)),
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'))
             ],
-          ),
+          );
+        },
+      );
+    } catch (e) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text(
+              'Error occurred while saving as ${saveAsJSON ? "JSON" : "Text"} file '),
+          content: Text(e.toString()),
           actions: [
             TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('OK'))
           ],
-        );
-      },
-    );
+        ),
+      );
+    }
 
 // jsonFileIo.writeJson('$subjectID-$topicID', jsonEncode(questions));
   };

@@ -200,11 +200,11 @@ class AppController extends GetxController {
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      snackBarAnimationStyle: AnimationStyle(
-          duration: const Duration(seconds: 1),
+      snackBarAnimationStyle: const AnimationStyle(
+          duration: Duration(seconds: 1),
           curve: Curves.easeIn,
           reverseCurve: Curves.bounceIn,
-          reverseDuration: const Duration(seconds: 1)),
+          reverseDuration: Duration(seconds: 1)),
       SnackBar(
         duration: const Duration(seconds: 2),
         content: Text('$addedQuestionCount new questions added successfully'),
