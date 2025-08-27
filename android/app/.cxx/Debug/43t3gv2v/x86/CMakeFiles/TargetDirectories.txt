@@ -1,0 +1,2 @@
+D:/development/mcqs_generator_ai_app/android/app/.cxx/Debug/43t3gv2v/x86/CMakeFiles/edit_cache.dir
+D:/development/mcqs_generator_ai_app/android/app/.cxx/Debug/43t3gv2v/x86/CMakeFiles/rebuild_cache.dir
