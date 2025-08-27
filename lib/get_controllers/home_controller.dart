@@ -19,6 +19,7 @@ class AppController extends GetxController {
   RxString subject = 'Computer Studies'.obs;
 
   final isSearchMode = false.obs;
+  final useAiToGenerateEssay = true.obs;
   final isAscendingOrder = true.obs;
   final searchBoxEnabled = false.obs;
 
@@ -34,6 +35,8 @@ class AppController extends GetxController {
   RxList<Question> questions = <Question>[].obs;
   RxList<Question> filteredQuestions = <Question>[].obs;
   RxList<String> entries = <String>[].obs;
+  RxList<String> essays = <String>[].obs;
+
   late TextEditingController inputController;
   late FocusNode inputFocusNode;
 
@@ -276,11 +279,17 @@ class AppController extends GetxController {
 
   void clearEntries() {
     entries.clear();
+    essays.clear();
     update();
   }
 
   addEntry(String entry) {
-    entries.insert(0, entry);
+    if (!useAiToGenerateEssay.value) {
+      essays.insert(0, entry);
+    } else {
+      entries.insert(0, entry);
+    }
+
     update();
   }
 
@@ -334,12 +343,16 @@ class AppController extends GetxController {
     final ins = Content.multi(
       [
         TextPart(
-            'Generate clear and concise minimum 60 MCQs in the csv format'),
+            'MOST IMPORTANT: Generate MCQs from the given text only, and don\'t add mcqs from out of syllabus'),
+        TextPart(
+            'Generate clear and concise ${useAiToGenerateEssay.value ? '30' : 'minimum 60'}  MCQs in the csv format'),
         TextPart('use three commas \',,,\' as delimiter'),
         TextPart(
-            'reconfirm that CSV values are separated with three commas ,,, '),
+            'reconfirm that CSV values are separated with three consecutive commas ,,, '),
         TextPart(
             'Question text should NOT refer to the \'text\' or \'essay\' or \'passage\'. For example: What is the primary \'focus\' or \'main idea\' or \'conclusion\' of this essay or text or passage?'),
+        TextPart(
+            'Question text should NOT refer to the \'text\' or \'essay\' or \'passage\'. For example: What is the average life of human according to text OR According to the text what is the average life of human.'),
         TextPart(
             'Each question should be self-contained and understandable without requiring prior access to the text.'),
         TextPart(
@@ -354,51 +367,64 @@ class AppController extends GetxController {
         TextPart(
             'Example incorrect output with two commas as delimiter: What is the capital of Pakistan ,, Hyderabad ,, Karachi ,, Islamabad ,, Peshawar ,, Islamabad'),
         TextPart(
-            'Recheck output with ,,, only, output should not contain ,, or , , or ,,,, or , , , delimiters.'),
+            'Recheck output with ,,, only, output SHOULD NOT CONTAIN ,, or , , or ,,,, or , , , types of delimiters.'),
       ],
     );
     String? csv = await askAI(ins, description);
     return csv;
   }
 
-  void getAIDescription(String searchKeywords, BuildContext context) async {
-    final instructions = Content.multi([
-      TextPart('Subject: ${subject.value}'),
-      TextPart('Topic: ${topicID.value}'),
-      TextPart('Generate a detailed essay on the given topic'),
-      TextPart('essay length: 2000 words minimum'),
-      TextPart('essay type: in-depth'),
-      TextPart(
-          'The Essay includes: history, actions, reactions, parts, sub-parts, examples, formulas, measurements, structure, importance, inventions, discoveries, scientists, artists, uses, involvements, dates, types, subtypes, etc'),
-    ]);
+  void getAIDescription(String text, BuildContext context) async {
+    if (!useAiToGenerateEssay.value) {
+      setGeneratingResponse(true);
 
-    askAI(instructions, searchKeywords).then((generatedDescription) {
-      if (generatedDescription != null) {
-        if (generatedDescription ==
-            "GenerativeAIException: Candidate was blocked due to recitation") {
-          showDialog(
-              context: context,
-              builder: (context) {
+      getCsvResponse(text).then(
+        (csv) {
+          setCSV(csv!);
+          addQuestions(context);
+
+          setGeneratingResponse(false);
+        },
+      );
+    } else {
+      final instructions = Content.multi([
+        TextPart('Subject: ${subject.value}'),
+        TextPart('Topic: ${topicID.value}'),
+        TextPart('Generate a detailed essay on the given topic'),
+        TextPart('essay length: 2000 words minimum'),
+        TextPart('essay type: in-depth'),
+        TextPart(
+            'The Essay includes: history, actions, reactions, parts, sub-parts, examples, formulas, measurements, structure, importance, inventions, discoveries, scientists, artists, uses, involvements, dates, types, subtypes, etc'),
+      ]);
+
+      askAI(instructions, text).then((generatedDescription) {
+        if (generatedDescription != null) {
+          if (generatedDescription ==
+              "GenerativeAIException: Candidate was blocked due to recitation") {
+            showDialog(
+                context: context,
+                builder: (context) {
+                  setGeneratingResponse(false);
+
+                  return const AlertDialog(
+                    title: Text('Error'),
+                    content: Text(
+                        'GenerativeAIException: Candidate was blocked due to recitation'),
+                  );
+                });
+          } else {
+            getCsvResponse(generatedDescription).then(
+              (csv) {
+                setCSV(csv!);
+                addQuestions(context);
+
                 setGeneratingResponse(false);
-
-                return const AlertDialog(
-                  title: Text('Error'),
-                  content: Text(
-                      'GenerativeAIException: Candidate was blocked due to recitation'),
-                );
-              });
-        } else {
-          getCsvResponse(generatedDescription).then(
-            (csv) {
-              setCSV(csv!);
-              addQuestions(context);
-
-              setGeneratingResponse(false);
-            },
-          );
+              },
+            );
+          }
         }
-      }
-    });
+      });
+    }
   }
 
   void setCSV(String value) {

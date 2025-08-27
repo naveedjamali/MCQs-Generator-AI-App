@@ -73,7 +73,7 @@ class UtilFunctions {
 
 // Create a file in the selected directory
     String filePath =
-        '$selectedDirectory/subject_$subject-topic_$topic-questions_${questionsList.length}.${saveAsJSON ? 'json' : 'txt'}'
+        '$selectedDirectory/$topic-subject_$subject-questions_${questionsList.length}.${saveAsJSON ? 'json' : 'txt'}'
             .toLowerCase();
 
     File file = File(filePath);

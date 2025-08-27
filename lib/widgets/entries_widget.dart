@@ -13,17 +13,34 @@ class EntriesWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() => ListView.builder(
-          itemCount: controller.entries.length,
+          itemCount: controller.useAiToGenerateEssay.value
+              ? controller.entries.length
+              : controller.essays.length,
           itemBuilder: (context, index) {
             return Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: SelectableText(
-                controller.entries[index],
-                style: const TextStyle(
-                  fontSize: 16,
-                ),
-              ),
-            );
+                padding: const EdgeInsets.all(8.0),
+                child: ListTile(
+                  subtitle: Text(
+                    controller.useAiToGenerateEssay.value
+                        ? controller.entries[index]
+                        : controller.essays[index].substring(0, 50),
+                    style: const TextStyle(
+                      fontSize: 16,
+                    ),
+                  ),
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        scrollable: true,
+                        content: SelectableText(
+                            controller.useAiToGenerateEssay.value
+                                ? controller.entries[index]
+                                : controller.essays[index]),
+                      ),
+                    );
+                  },
+                ));
           },
         ));
   }

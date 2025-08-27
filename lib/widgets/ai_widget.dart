@@ -17,7 +17,7 @@ class AiWidget extends StatelessWidget {
               onPressed: () {
                 controller.clearEntries();
               },
-              label: const Text('Clear topics'),
+              label: const Text('Clear list'),
               icon: const Icon(
                 Icons.clear,
                 color: Colors.red,

@@ -100,6 +100,28 @@ class _AppDrawerState extends State<AppDrawer> {
             trailing: const Icon(Icons.menu_book_outlined),
           ),
           const Divider(),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                const Text(
+                  'Generate Essay with AI',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                Obx(
+                  () => Switch(
+                    value: widget.controller.useAiToGenerateEssay.value,
+                    onChanged: (value) {
+                      widget.controller.useAiToGenerateEssay.value = value;
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          DropdownButtonFormField(items: [], onChanged: (val) {}),
+          const Divider(),
           ListTile(
             title: const Padding(
               padding: EdgeInsets.all(8.0),
