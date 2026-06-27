@@ -14,11 +14,13 @@ import '../models.dart';
 class AppController extends GetxController {
   RxString queryText = "".obs;
   RxString API_KEY = "".obs;
+  RxString selectedModel = "gemini-2.0-flash".obs;
   RxString csv = ''.obs;
   RxString topicID = 'Computer System'.obs;
   RxString subject = 'Computer Studies'.obs;
 
   final isSearchMode = false.obs;
+  final isCovertCSVMode = false.obs;
   final useAiToGenerateEssay = true.obs;
   final isAscendingOrder = true.obs;
   final searchBoxEnabled = false.obs;
@@ -27,6 +29,8 @@ class AppController extends GetxController {
   final generatingResponse = false.obs;
 
   final isFilteringFourAnswers = false.obs;
+  final showSearchField = false.obs;
+  final showAiInput = true.obs;
 
   late FocusNode topicFocus;
   late FocusNode subjectFocus;
@@ -62,7 +66,10 @@ class AppController extends GetxController {
     );
     searchController = TextEditingController(text: '');
     itemScrollController = ItemScrollController();
-    inputController = TextEditingController(text: 'RAM vs ROM: A brief guide');
+    inputController = TextEditingController(
+        text: isCovertCSVMode.value
+            ? 'Enter CSV here'
+            : 'RAM vs ROM: A brief guide');
     inputFocusNode = FocusNode();
     topicFocus = FocusNode();
     subjectFocus = FocusNode();
@@ -72,8 +79,22 @@ class AppController extends GetxController {
     itemPositionsListener = ItemPositionsListener.create();
     scrollOffsetListener = ScrollOffsetListener.create();
     readApiKeyFromStorage();
+    readModelFromStorage();
 
     super.onInit();
+  }
+
+  Future<void> readModelFromStorage() async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    selectedModel.value = sp.getString("MODEL") ?? "gemini-2.0-flash";
+  }
+
+  Future<bool> saveModelToStorage(String model) async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    bool saved = await sp.setString("MODEL", model);
+    selectedModel.value = model;
+    update();
+    return saved;
   }
 
   Future<String> readApiKeyFromStorage() async {
@@ -211,7 +232,6 @@ class AppController extends GetxController {
       SnackBar(
         duration: const Duration(seconds: 2),
         content: Text('$addedQuestionCount new questions added successfully'),
-        width: 600,
         backgroundColor: Colors.green,
         padding: const EdgeInsets.all(16),
         behavior: SnackBarBehavior.floating,
@@ -304,11 +324,16 @@ class AppController extends GetxController {
   }
 
   Future<String?> askAI(Content instructions, String query) async {
-    // Access your API key as an environment variable (see "Set up your API key" above)
+    // Determine the API version based on the model
+    String apiVersion = 'v1';
+    if (selectedModel.value.contains('2.0')) {
+      apiVersion = 'v1beta';
+    }
 
     final model = GenerativeModel(
-      model: 'gemini-2.0-flash',
+      model: selectedModel.value,
       apiKey: API_KEY.value,
+      apiVersion: apiVersion,
       safetySettings: [
         SafetySetting(
           HarmCategory.sexuallyExplicit,
@@ -330,12 +355,17 @@ class AppController extends GetxController {
     try {
       final response = await model.generateContent([Content.text(prompt)]);
 
+      if (response.text == null) {
+        throw 'The AI returned an empty response. Please try again.';
+      }
+
       if (kDebugMode) {
         print(response.text);
       }
       return response.text;
     } catch (error) {
-      return error.toString();
+      if (kDebugMode) print('AI Error: $error');
+      rethrow;
     }
   }
 
@@ -374,56 +404,76 @@ class AppController extends GetxController {
     return csv;
   }
 
-  void getAIDescription(String text, BuildContext context) async {
-    if (!useAiToGenerateEssay.value) {
-      setGeneratingResponse(true);
-
-      getCsvResponse(text).then(
-        (csv) {
-          setCSV(csv!);
+  Future<void> getAIDescription(String text, BuildContext context) async {
+    setGeneratingResponse(true);
+    try {
+      if (!useAiToGenerateEssay.value) {
+        String? csvResponse = await getCsvResponse(text);
+        if (csvResponse != null) {
+          setCSV(csvResponse);
           addQuestions(context);
+        }
+      } else {
+        final instructions = Content.multi([
+          TextPart('Subject: ${subject.value}'),
+          TextPart('Topic: ${topicID.value}'),
+          TextPart('Generate a detailed essay on the given topic'),
+          TextPart('essay length: 2000 words minimum'),
+          TextPart('essay type: in-depth'),
+          TextPart(
+              'The Essay includes: history, actions, reactions, parts, sub-parts, examples, formulas, measurements, structure, importance, inventions, discoveries, scientists, artists, uses, involvements, dates, types, subtypes, etc'),
+        ]);
 
-          setGeneratingResponse(false);
-        },
-      );
-    } else {
-      final instructions = Content.multi([
-        TextPart('Subject: ${subject.value}'),
-        TextPart('Topic: ${topicID.value}'),
-        TextPart('Generate a detailed essay on the given topic'),
-        TextPart('essay length: 2000 words minimum'),
-        TextPart('essay type: in-depth'),
-        TextPart(
-            'The Essay includes: history, actions, reactions, parts, sub-parts, examples, formulas, measurements, structure, importance, inventions, discoveries, scientists, artists, uses, involvements, dates, types, subtypes, etc'),
-      ]);
+        String? generatedDescription = await askAI(instructions, text);
 
-      askAI(instructions, text).then((generatedDescription) {
         if (generatedDescription != null) {
-          if (generatedDescription ==
-              "GenerativeAIException: Candidate was blocked due to recitation") {
-            showDialog(
-                context: context,
-                builder: (context) {
-                  setGeneratingResponse(false);
-
-                  return const AlertDialog(
-                    title: Text('Error'),
-                    content: Text(
-                        'GenerativeAIException: Candidate was blocked due to recitation'),
-                  );
-                });
-          } else {
-            getCsvResponse(generatedDescription).then(
-              (csv) {
-                setCSV(csv!);
-                addQuestions(context);
-
-                setGeneratingResponse(false);
-              },
-            );
+          String? csvFromEssay = await getCsvResponse(generatedDescription);
+          if (csvFromEssay != null) {
+            setCSV(csvFromEssay);
+            addQuestions(context);
           }
         }
-      });
+      }
+    } catch (e) {
+      String errorMessage = 'An unexpected error occurred';
+
+      if (e.toString().contains('key not found') ||
+          e.toString().contains('API_KEY_INVALID')) {
+        errorMessage = 'Invalid API Key. Please check your settings.';
+      } else if (e.toString().contains('SocketException')) {
+        errorMessage = 'No internet connection. Please check your network.';
+      } else if (e.toString().contains('recitation') ||
+          e.toString().contains('blocked')) {
+        errorMessage = 'Content was blocked by safety filters.';
+      } else if (e.toString().contains('quota')) {
+        errorMessage = 'API quota exceeded. Please try again later.';
+      } else {
+        errorMessage = e.toString();
+      }
+
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red),
+                SizedBox(width: 8),
+                Text('Generation Failed'),
+              ],
+            ),
+            content: Text(errorMessage),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Dismiss'),
+              ),
+            ],
+          ),
+        );
+      }
+    } finally {
+      setGeneratingResponse(false);
     }
   }
 

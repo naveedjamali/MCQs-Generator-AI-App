@@ -15,76 +15,57 @@ class SearchTextInQuestionsForm extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Divider(
-          color: Colors.grey,
-          height: 1,
-          thickness: 1,
-        ),
-        const Text(
-          'Filter questions with words:',
-          style: TextStyle(fontSize: 14),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            TextButton(
-                onPressed: () => controller.setSearchText('text'),
-                child: const Text('Text')),
-            TextButton(
-                onPressed: () => controller.setSearchText('essay'),
-                child: const Text('Essay')),
-            TextButton(
-                onPressed: () => controller.setSearchText('passage'),
-                child: const Text('Passage')),
-            TextButton(
-                onPressed: () => controller.setSearchText('conclu'),
-                child: const Text('Conclusion')),
-            TextButton(
-                onPressed: () => controller.setSearchText('focus'),
-                child: const Text('Focus')),
-            TextButton(
-                onPressed: () => controller.setSearchText('idea'),
-                child: const Text('Idea')),
-          ],
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            TextButton(
-                onPressed: () => controller.setSearchText('research'),
-                child: const Text('Research')),
-            TextButton(
-                onPressed: () => controller.setSearchText('this'),
-                child: const Text('This')),
-            TextButton(
-                onPressed: () => controller.setSearchText('world'),
-                child: const Text('World')),
-            TextButton(
-                onPressed: () => controller.setSearchText('earth'),
-                child: const Text('Earth')),
-            TextButton(
-                onPressed: () => controller.setSearchText('france'),
-                child: const Text('France')),
-            TextButton(
-                onPressed: () => controller.setSearchText('planet'),
-                child: const Text('Planet')),
-          ],
-        ),
         Row(
           children: [
             Expanded(
-                flex: 1,
-                child: TextFormField(
-                  // enabled: controller.searchBoxEnabled.value,
-                  controller: controller.searchController,
-                  decoration: const InputDecoration(
-                      label: Text('filter questions with word',
-                          style: TextStyle(fontSize: 10))),
-                )),
+              child: TextFormField(
+                controller: controller.searchController,
+                decoration: InputDecoration(
+                  isDense: true,
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  labelText: 'Filter questions with word',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
             SearchButton(),
           ],
         ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 40,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              _filterChip('Text'),
+              _filterChip('Essay'),
+              _filterChip('Passage'),
+              _filterChip('Conclusion'),
+              _filterChip('Focus'),
+              _filterChip('Idea'),
+              _filterChip('Research'),
+              _filterChip('World'),
+              _filterChip('Earth'),
+              _filterChip('France'),
+              _filterChip('Planet'),
+            ],
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _filterChip(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: ActionChip(
+        label: Text(label, style: const TextStyle(fontSize: 12)),
+        onPressed: () => controller.setSearchText(label.toLowerCase()),
+        backgroundColor: Colors.green.withOpacity(0.1),
+      ),
     );
   }
 }

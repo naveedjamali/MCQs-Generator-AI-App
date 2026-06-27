@@ -190,30 +190,28 @@ class _QuestionWidgetState extends State<QuestionWidget> {
     return Padding(
       key: ValueKey(index),
       padding: const EdgeInsets.all(8),
-      child: Row(
-        children: [
-          const Text('Add new answer and press Enter:'),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              textInputAction: TextInputAction.go,
-              controller: newAnswerController,
-              onSubmitted: (value) {
-                if (newAnswerController.text.isNotEmpty) {
-                  AnswerOptions newAns = AnswerOptions()
-                    ..isCorrect = false
-                    ..body = Body(
-                        contentType: 'PLAIN',
-                        content: newAnswerController.text);
+      child: TextField(
+        textInputAction: TextInputAction.go,
+        controller: newAnswerController,
+        decoration: const InputDecoration(
+          labelText: 'Add new answer and press Enter',
+          hintText: 'Type answer here...',
+          prefixIcon: Icon(Icons.add),
+          border: OutlineInputBorder(),
+        ),
+        onSubmitted: (value) {
+          if (newAnswerController.text.isNotEmpty) {
+            AnswerOptions newAns = AnswerOptions()
+              ..isCorrect = false
+              ..body =
+                  Body(contentType: 'PLAIN', content: newAnswerController.text);
 
-                  setState(() {
-                    widget.question.answerOptions?.add(newAns);
-                  });
-                }
-              },
-            ),
-          ),
-        ],
+            setState(() {
+              widget.question.answerOptions?.add(newAns);
+              newAnswerController.clear();
+            });
+          }
+        },
       ),
     );
   }

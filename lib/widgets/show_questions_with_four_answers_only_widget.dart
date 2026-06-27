@@ -12,6 +12,7 @@ class ShowQuestionsWithFourAnswersOnly extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() => Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Text('Filter questions with not 4 answers '),
             Checkbox(

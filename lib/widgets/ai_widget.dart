@@ -10,88 +10,73 @@ class AiWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Row(
           children: [
-            TextButton.icon(
-              onPressed: () {
-                controller.clearEntries();
-              },
-              label: const Text('Clear list'),
-              icon: const Icon(
-                Icons.clear,
-                color: Colors.red,
-              ),
-            )
-          ],
-        ),
-        SizedBox(
-          child: Row(
-            children: [
-              Flexible(
-                flex: 1,
-                child: TextField(
-                  focusNode: controller.inputFocusNode,
-                  textInputAction: TextInputAction.go,
-                  onSubmitted: (value) async {
-                    if (controller.inputController.text.isEmpty) {
-                      showDialog(
-                        context: context,
-                        builder: (context) => const AlertDialog(
-                          title: Text('input text first'),
-                        ),
-                      );
-                    } else {
-                      String text = controller.inputController.text;
-                      controller.addEntry(text);
-                      controller.setGeneratingResponse(true);
-
-                      try {
-                        controller.getAIDescription(text, context);
-                        controller.getAIDescription(text, context);
-
-                        controller.setInputControllerText('');
-                        controller.inputFocusNode.requestFocus();
-                      } catch (e) {
-                        showDialog(
-                          context: context,
-                          builder: (context) {
-                            final errorTextController = TextEditingController();
-
-                            return AlertDialog(
-                              title: const Text('Error'),
-                              content: Column(
-                                children: [
-                                  Text(e.toString()),
-                                  const Text(
-                                      'Re-write your query and try again'),
-                                  TextFormField(
-                                    controller: errorTextController,
-                                  ),
-                                ],
-                              ),
-                              actions: [
-                                ElevatedButton(
-                                    onPressed: () {}, child: const Text('Go'))
-                              ],
-                            );
-                          },
-                        );
-                      }
-                    }
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Enter your topic and press Enter',
+            Expanded(
+              child: TextField(
+                focusNode: controller.inputFocusNode,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (value) => _handleSubmission(context),
+                decoration: InputDecoration(
+                  labelText: controller.isCovertCSVMode.value
+                      ? 'Paste CSV content here'
+                      : 'E.g. photosynthesis process, RAM vs ROM',
+                  hintText: 'Enter topic or CSV...',
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.send, color: Colors.green),
+                    onPressed: () => _handleSubmission(context),
                   ),
-                  maxLines: null,
-                  keyboardType: TextInputType.multiline,
-                  controller: controller.inputController,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20),
                 ),
+                maxLines: 3,
+                minLines: 1,
+                keyboardType: TextInputType.multiline,
+                controller: controller.inputController,
               ),
-            ],
-          ),
+            ),
+            IconButton(
+              onPressed: () => controller.clearEntries(),
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              tooltip: 'Clear History',
+            ),
+          ],
         ),
       ],
     );
+  }
+
+  void _handleSubmission(BuildContext context) async {
+    if (controller.inputController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter text first')),
+      );
+      return;
+    }
+
+    if (controller.isCovertCSVMode.value) {
+      String text = controller.inputController.text;
+      controller.addEntry(text);
+      controller.setCSV(text);
+      controller.addQuestions(context);
+      controller.inputController.clear();
+      controller.inputFocusNode.requestFocus();
+    } else {
+      String text = controller.inputController.text;
+      controller.addEntry(text);
+      controller.setGeneratingResponse(true);
+
+      try {
+        await controller.getAIDescription(text, context);
+        controller.inputController.clear();
+        controller.inputFocusNode.requestFocus();
+      } catch (e) {
+        // Errors are already handled inside getAIDescription
+      }
+    }
   }
 }

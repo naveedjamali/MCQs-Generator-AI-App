@@ -29,9 +29,13 @@ class ApiKeyWidget extends StatelessWidget {
                   builder: (context) => AlertDialog(
                     title: const Text('Enter Gemini API Key'),
                     content: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         TextField(
                           controller: apiKeyController,
+                          decoration: const InputDecoration(
+                            hintText: 'Paste your API key here',
+                          ),
                         ),
                       ],
                     ),

@@ -12,6 +12,7 @@ class ShowAnswers extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() => Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Text('Show answers'),
             Checkbox(

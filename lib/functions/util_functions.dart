@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:mcqs_generator_ai_app/models.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 ///Contains utility functions
@@ -63,18 +64,24 @@ class UtilFunctions {
       List<Question> questionsList,
       BuildContext context,
       bool saveAsJSON) async {
-    String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Choose a location to save the file',
-    );
-    if (selectedDirectory == null) {
-//user canceled the picker
-      return;
-    }
+//     String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
+//       dialogTitle: 'Choose a location to save the file',
+//     );
+//     if (selectedDirectory == null) {
+// //user canceled the picker
+//       return;
+//     }
 
-// Create a file in the selected directory
+    Directory appDocDir = await getApplicationDocumentsDirectory();
+
     String filePath =
-        '$selectedDirectory/$topic-subject_$subject-questions_${questionsList.length}.${saveAsJSON ? 'json' : 'txt'}'
+        '${appDocDir.path}/$topic-subject_$subject-questions_${questionsList.length}.${saveAsJSON ? 'json' : 'txt'}'
             .toLowerCase();
+
+    // Create a file in the selected directory
+    // String filePath =
+    //     '$selectedDirectory/$topic-subject_$subject-questions_${questionsList.length}.${saveAsJSON ? 'json' : 'txt'}'
+    //         .toLowerCase();
 
     File file = File(filePath);
     final directory = file.parent;
@@ -104,9 +111,11 @@ class UtilFunctions {
             children: [
               const Text('File saved successfully'),
               TextButton(
-                  onPressed: () {
-                    Uri uri = Uri.file(filePath);
-                    launchUrl(uri);
+                  onPressed: () async {
+                    final uri = Uri.file(filePath);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
+                    }
                     Navigator.of(context).pop();
                   },
                   child: Text(filePath)),
