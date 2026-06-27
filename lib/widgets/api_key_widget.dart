@@ -16,14 +16,18 @@ class ApiKeyWidget extends StatelessWidget {
           subtitle: Padding(
             padding: const EdgeInsets.all(8),
             child: Text(
-              controller.API_KEY.value,
-              style: const TextStyle(fontSize: 8),
+              controller.apiKey.value.isEmpty
+                  ? 'No key set'
+                  : controller.apiKey.value.length > 8
+                      ? '${controller.apiKey.value.substring(0, 4)}...${controller.apiKey.value.substring(controller.apiKey.value.length - 4)}'
+                      : '********',
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
             ),
           ),
           trailing: ElevatedButton(
               onPressed: () {
                 final TextEditingController apiKeyController =
-                    TextEditingController();
+                    TextEditingController(text: controller.apiKey.value);
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(

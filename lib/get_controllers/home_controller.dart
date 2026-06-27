@@ -13,11 +13,37 @@ import '../models.dart';
 
 class AppController extends GetxController {
   RxString queryText = "".obs;
-  RxString API_KEY = "".obs;
+  RxString apiKey = "".obs;
   RxString selectedModel = "gemini-2.0-flash".obs;
   RxString csv = ''.obs;
   RxString topicID = 'Computer System'.obs;
   RxString subject = 'Computer Studies'.obs;
+
+  RxString csvInstructions = '''
+MOST IMPORTANT: Generate MCQs from the given text only, and don't add mcqs from out of syllabus.
+Generate clear and concise MCQs in the csv format.
+use three commas ',,,' as delimiter.
+reconfirm that CSV values are separated with three consecutive commas ,,, .
+Question text should NOT refer to the 'text' or 'essay' or 'passage'. For example: What is the primary 'focus' or 'main idea' or 'conclusion' of this essay or text or passage?
+Question text should NOT refer to the 'text' or 'essay' or 'passage'. For example: What is the average life of human according to text OR According to the text what is the average life of human.
+Each question should be self-contained and understandable without requiring prior access to the text.
+DO NOT INCLUDE markup tags in the questions and answers e.g. <sub>, <sup> etc.
+CSV output format: Question ,,, Option1 ,,, Option2 ,,, Option3 ,,, Option4 ,,, CorrectAnswer.
+Minimum four answer options for every question.
+Example correct output: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, Islamabad.
+Example incorrect output: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, C.
+Example incorrect output with two commas as delimiter: What is the capital of Pakistan ,, Hyderabad ,, Karachi ,, Islamabad ,, Peshawar ,, Islamabad.
+Recheck output with ,,, only, output SHOULD NOT CONTAIN ,, or , , or ,,,, or , , , types of delimiters.
+'''
+      .obs;
+
+  RxString essayInstructions = '''
+Generate a detailed essay on the given topic.
+essay length: 2000 words minimum.
+essay type: in-depth.
+The Essay includes: history, actions, reactions, parts, sub-parts, examples, formulas, measurements, structure, importance, inventions, discoveries, scientists, artists, uses, involvements, dates, types, subtypes, etc.
+'''
+      .obs;
 
   final isSearchMode = false.obs;
   final isCovertCSVMode = false.obs;
@@ -80,19 +106,47 @@ class AppController extends GetxController {
     scrollOffsetListener = ScrollOffsetListener.create();
     readApiKeyFromStorage();
     readModelFromStorage();
+    readInstructionsFromStorage();
 
     super.onInit();
   }
 
+  Future<void> readInstructionsFromStorage() async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    csvInstructions.value =
+        sp.getString("CSV_INSTRUCTIONS") ?? csvInstructions.value;
+    essayInstructions.value =
+        sp.getString("ESSAY_INSTRUCTIONS") ?? essayInstructions.value;
+  }
+
+  Future<bool> saveCsvInstructionsToStorage(String instructions) async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    bool saved = await sp.setString("CSV_INSTRUCTIONS", instructions);
+    csvInstructions.value = instructions;
+    update();
+    return saved;
+  }
+
+  Future<bool> saveEssayInstructionsToStorage(String instructions) async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    bool saved = await sp.setString("ESSAY_INSTRUCTIONS", instructions);
+    essayInstructions.value = instructions;
+    update();
+    return saved;
+  }
+
   Future<void> readModelFromStorage() async {
     SharedPreferences sp = await SharedPreferences.getInstance();
-    selectedModel.value = sp.getString("MODEL") ?? "gemini-2.0-flash";
+    String model = sp.getString("MODEL") ?? "gemini-2.0-flash";
+    // Sanitize: remove 'models/' prefix if it exists in storage
+    selectedModel.value = model.replaceFirst('models/', '');
   }
 
   Future<bool> saveModelToStorage(String model) async {
     SharedPreferences sp = await SharedPreferences.getInstance();
-    bool saved = await sp.setString("MODEL", model);
-    selectedModel.value = model;
+    String sanitizedModel = model.replaceFirst('models/', '');
+    bool saved = await sp.setString("MODEL", sanitizedModel);
+    selectedModel.value = sanitizedModel;
     update();
     return saved;
   }
@@ -100,15 +154,15 @@ class AppController extends GetxController {
   Future<String> readApiKeyFromStorage() async {
     SharedPreferences sp = await SharedPreferences.getInstance();
     String key = sp.getString("API") ?? "";
-    API_KEY.value = key;
+    apiKey.value = key;
 
     return key;
   }
 
-  Future<bool> saveApiKeyInStorage(String apiKey) async {
+  Future<bool> saveApiKeyInStorage(String apiKeyText) async {
     SharedPreferences sp = await SharedPreferences.getInstance();
-    bool saved = await sp.setString("API", apiKey);
-    API_KEY.value = apiKey;
+    bool saved = await sp.setString("API", apiKeyText);
+    apiKey.value = apiKeyText;
     update();
     return saved;
   }
@@ -324,16 +378,19 @@ class AppController extends GetxController {
   }
 
   Future<String?> askAI(Content instructions, String query) async {
-    // Determine the API version based on the model
+    // Access your API key as an environment variable
+    String modelName = selectedModel.value;
+
+    // Explicitly determine the correct API version and model ID format
     String apiVersion = 'v1';
-    if (selectedModel.value.contains('2.0')) {
+    if (modelName.contains('2.0') || modelName.contains('lite')) {
       apiVersion = 'v1beta';
     }
 
     final model = GenerativeModel(
-      model: selectedModel.value,
-      apiKey: API_KEY.value,
-      apiVersion: apiVersion,
+      model:
+          modelName, // The SDK handles 'models/' prefix internally if missing
+      apiKey: apiKey.value,
       safetySettings: [
         SafetySetting(
           HarmCategory.sexuallyExplicit,
@@ -370,35 +427,16 @@ class AppController extends GetxController {
   }
 
   Future<String?> getCsvResponse(String description) async {
+    String count = useAiToGenerateEssay.value ? '30' : 'minimum 60';
+    String finalInstructions =
+        csvInstructions.value.replaceAll('{count}', count);
+
     final ins = Content.multi(
-      [
-        TextPart(
-            'MOST IMPORTANT: Generate MCQs from the given text only, and don\'t add mcqs from out of syllabus'),
-        TextPart(
-            'Generate clear and concise ${useAiToGenerateEssay.value ? '30' : 'minimum 60'}  MCQs in the csv format'),
-        TextPart('use three commas \',,,\' as delimiter'),
-        TextPart(
-            'reconfirm that CSV values are separated with three consecutive commas ,,, '),
-        TextPart(
-            'Question text should NOT refer to the \'text\' or \'essay\' or \'passage\'. For example: What is the primary \'focus\' or \'main idea\' or \'conclusion\' of this essay or text or passage?'),
-        TextPart(
-            'Question text should NOT refer to the \'text\' or \'essay\' or \'passage\'. For example: What is the average life of human according to text OR According to the text what is the average life of human.'),
-        TextPart(
-            'Each question should be self-contained and understandable without requiring prior access to the text.'),
-        TextPart(
-            'DO NOT INCLUDE markup tags in the questions and answers e.g. <sub>, <sup> etc'),
-        TextPart(
-            'CSV output format: Question ,,, Option1 ,,, Option2 ,,, Option3 ,,, Option4 ,,, CorrectAnswer'),
-        TextPart('Minimum four answer options for every question'),
-        TextPart(
-            'Example correct output: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, Islamabad'),
-        TextPart(
-            'Example incorrect output: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, C'),
-        TextPart(
-            'Example incorrect output with two commas as delimiter: What is the capital of Pakistan ,, Hyderabad ,, Karachi ,, Islamabad ,, Peshawar ,, Islamabad'),
-        TextPart(
-            'Recheck output with ,,, only, output SHOULD NOT CONTAIN ,, or , , or ,,,, or , , , types of delimiters.'),
-      ],
+      finalInstructions
+          .split('\n')
+          .where((s) => s.trim().isNotEmpty)
+          .map((s) => TextPart(s.trim()))
+          .toList(),
     );
     String? csv = await askAI(ins, description);
     return csv;
@@ -410,27 +448,33 @@ class AppController extends GetxController {
       if (!useAiToGenerateEssay.value) {
         String? csvResponse = await getCsvResponse(text);
         if (csvResponse != null) {
-          setCSV(csvResponse);
-          addQuestions(context);
+          if (context.mounted) {
+            setCSV(csvResponse);
+            addQuestions(context);
+          }
         }
       } else {
-        final instructions = Content.multi([
-          TextPart('Subject: ${subject.value}'),
-          TextPart('Topic: ${topicID.value}'),
-          TextPart('Generate a detailed essay on the given topic'),
-          TextPart('essay length: 2000 words minimum'),
-          TextPart('essay type: in-depth'),
-          TextPart(
-              'The Essay includes: history, actions, reactions, parts, sub-parts, examples, formulas, measurements, structure, importance, inventions, discoveries, scientists, artists, uses, involvements, dates, types, subtypes, etc'),
-        ]);
+        String finalEssayInstructions = essayInstructions.value
+            .replaceAll('{subject}', subject.value)
+            .replaceAll('{topic}', topicID.value);
+
+        final instructions = Content.multi(
+          finalEssayInstructions
+              .split('\n')
+              .where((s) => s.trim().isNotEmpty)
+              .map((s) => TextPart(s.trim()))
+              .toList(),
+        );
 
         String? generatedDescription = await askAI(instructions, text);
 
         if (generatedDescription != null) {
           String? csvFromEssay = await getCsvResponse(generatedDescription);
           if (csvFromEssay != null) {
-            setCSV(csvFromEssay);
-            addQuestions(context);
+            if (context.mounted) {
+              setCSV(csvFromEssay);
+              addQuestions(context);
+            }
           }
         }
       }
@@ -560,13 +604,13 @@ class AppController extends GetxController {
   String convertHtmlToFlutterKatex(String html) {
     // Replace <sub> tags with KaTeX subscript syntax
     String katex = html.replaceAllMapped(
-      RegExp(r'<sub>(.*?)<\/sub>'),
+      RegExp(r'<sub>(.*?)</sub>'),
       (match) => '_{${match.group(1)}}',
     );
 
     // Replace <sup> tags with KaTeX superscript syntax
     katex = katex.replaceAllMapped(
-      RegExp(r'<sup>(.*?)<\/sup>'),
+      RegExp(r'<sup>(.*?)</sup>'),
       (match) => '^{${match.group(1)}}',
     );
 

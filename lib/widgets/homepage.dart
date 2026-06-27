@@ -64,9 +64,19 @@ class Homepage extends StatelessWidget {
                     controller.setSearchMode(value.isNotEmpty);
                   },
                 )
-              : const Text(
-                  "MCQs Generator AI",
-                  style: TextStyle(color: Colors.white),
+              : Row(
+                  children: [
+                    Image.asset(
+                      'assets/images/icon.png',
+                      height: 30,
+                      width: 30,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      "MCQs Generator AI",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ],
                 )),
           actions: [
             Obx(() => IconButton(
