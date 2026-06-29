@@ -399,14 +399,10 @@ class _AppDrawerState extends State<AppDrawer> {
 
   void _showModelSelectionDialog(BuildContext context) {
     final Map<String, String> modelMap = {
-      'gemini-1.5-flash': 'Gemini 1.5 Flash',
-      'gemini-1.5-pro': 'Gemini 1.5 Pro',
-      'gemini-1.5-flash-8b': 'Gemini 1.5 Flash-8B',
-      'gemini-2.0-flash': 'Gemini 2.0 Flash',
-      'gemini-2.0-flash-lite-preview-02-05': 'Gemini 2.0 Flash Lite',
       'gemini-2.5-flash': 'Gemini 2.5 Flash',
       'gemini-3-flash-preview': 'Gemini 3 Flash (Preview)',
       'gemini-3.1-flash-lite-preview': 'Gemini 3.1 Flash Lite',
+      'gemini-3.1-pro-preview': 'Gemini 3.1 Pro (Preview)',
       'gemini-3.5-flash': 'Gemini 3.5 Flash',
     };
 

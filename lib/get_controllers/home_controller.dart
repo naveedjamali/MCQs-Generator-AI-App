@@ -13,7 +13,7 @@ import '../models.dart';
 class AppController extends GetxController {
   RxString queryText = "".obs;
   RxString apiKey = "".obs;
-  RxString selectedModel = "gemini-2.0-flash".obs;
+  RxString selectedModel = "gemini-2.5-flash".obs;
   RxString csvOutput = ''.obs;
   RxString topicID = 'Computer System'.obs;
   RxString subject = 'Computer Studies'.obs;
@@ -137,7 +137,7 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
 
   Future<void> readModelFromStorage() async {
     SharedPreferences sp = await SharedPreferences.getInstance();
-    String model = sp.getString("MODEL") ?? "gemini-2.0-flash";
+    String model = sp.getString("MODEL") ?? "gemini-2.5-flash";
     // Sanitize: remove 'models/' prefix if it exists in storage
     selectedModel.value = model.replaceFirst('models/', '');
   }
