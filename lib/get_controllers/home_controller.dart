@@ -19,7 +19,7 @@ class AppController extends GetxController {
   RxString subject = 'Computer Studies'.obs;
 
   RxString csvInstructions = '''
-MOST IMPORTANT: Generate MCQs from the given text only, and don't add mcqs from out of syllabus.
+MOST IMPORTANT: Generate MCQs from the given text only, and don't add mcqs from out of given text.
 Generate clear and concise MCQs in the csv format.
 use three commas ',,,' as delimiter.
 reconfirm that CSV values are separated with three consecutive commas ,,, .
@@ -29,6 +29,8 @@ Each question should be self-contained and understandable without requiring prio
 DO NOT INCLUDE markup tags in the questions and answers e.g. <sub>, <sup> etc.
 CSV output format: Question ,,, Option1 ,,, Option2 ,,, Option3 ,,, Option4 ,,, CorrectAnswer.
 Minimum four answer options for every question.
+Exactly one correct option for every question.
+Exactly three incorrect options for every question.
 Example correct output: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, Islamabad.
 Example incorrect output: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, C.
 Example incorrect output with two commas as delimiter: What is the capital of Pakistan ,, Hyderabad ,, Karachi ,, Islamabad ,, Peshawar ,, Islamabad.
@@ -523,12 +525,12 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
     update();
   }
 
-  updateChapter(String text) {
+  void updateChapter(String text) {
     topicID.value = text;
     update();
   }
 
-  updateSubject(String text) {
+  void updateSubject(String text) {
     subject.value = text;
     update();
   }

@@ -83,7 +83,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           widget.controller.subject.value,
                           widget.controller.topicID.value,
                           widget.controller.questions,
-                          Get.context,
+                          context,
                           true);
                       Get.back();
                     },
@@ -96,7 +96,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           widget.controller.subject.value,
                           widget.controller.topicID.value,
                           widget.controller.questions,
-                          Get.context,
+                          context,
                           false);
                       Get.back();
                     },
