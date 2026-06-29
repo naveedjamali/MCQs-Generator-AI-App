@@ -12,16 +12,15 @@ class ShuffleQuestionsWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(4.0),
-      child: MaterialButton(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+      child: TextButton.icon(
         onPressed: () {
           controller.questions.shuffle();
         },
-        child: const Row(
-          children: [
-            Icon(Icons.shuffle),
-            Text(' Shuffle Questions'),
-          ],
+        icon: const Icon(Icons.shuffle, size: 20),
+        label: const Text('Shuffle'),
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.blueGrey.shade700,
         ),
       ),
     );

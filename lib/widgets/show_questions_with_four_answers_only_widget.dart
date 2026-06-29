@@ -18,7 +18,7 @@ class ShowQuestionsWithFourAnswersOnly extends StatelessWidget {
           ),
           value: controller.isFilteringFourAnswers.value,
           onChanged: (value) => controller.setFilteringFourOptions(value),
-          activeTrackColor: Colors.green.shade700,
+          activeTrackColor: Theme.of(context).colorScheme.primary,
           dense: true,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
         ));

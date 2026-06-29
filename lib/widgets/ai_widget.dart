@@ -67,8 +67,8 @@ class AiWidget extends StatelessWidget {
               icon: const Icon(Icons.auto_awesome),
               label: const Text('Generate MCQs'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
               ),
             ),
           ],

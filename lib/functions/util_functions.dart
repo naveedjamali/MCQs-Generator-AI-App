@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:mcqs_generator_ai_app/models.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 ///Contains utility functions
 class UtilFunctions {
@@ -63,29 +63,28 @@ class UtilFunctions {
       List<Question> questionsList,
       BuildContext context,
       bool saveAsJSON) async {
-//     String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
-//       dialogTitle: 'Choose a location to save the file',
-//     );
-//     if (selectedDirectory == null) {
-// //user canceled the picker
-//       return;
-//     }
-
-    Directory appDocDir = await getApplicationDocumentsDirectory();
-
-    String filePath =
-        '${appDocDir.path}/$topic-subject_$subject-questions_${questionsList.length}.${saveAsJSON ? 'json' : 'txt'}'
+    String fileName =
+        '$topic-subject_$subject-questions_${questionsList.length}.${saveAsJSON ? 'json' : 'txt'}'
             .toLowerCase();
 
-    // Create a file in the selected directory
-    // String filePath =
-    //     '$selectedDirectory/$topic-subject_$subject-questions_${questionsList.length}.${saveAsJSON ? 'json' : 'txt'}'
-    //         .toLowerCase();
+    String? selectedDirectory = await FilePicker.getDirectoryPath(
+      dialogTitle: 'Choose a location to save the file',
+    );
+
+    String filePath;
+
+    if (selectedDirectory == null) {
+      // User canceled directory picker, fallback to app documents
+      Directory appDocDir = await getApplicationDocumentsDirectory();
+      filePath = '${appDocDir.path}/$fileName';
+    } else {
+      filePath = '$selectedDirectory/$fileName';
+    }
 
     File file = File(filePath);
     final directory = file.parent;
     if (!(await directory.exists())) {
-      await directory.create(recursive: true); // creates all missing folders
+      await directory.create(recursive: true);
     }
 
     if (saveAsJSON) {
@@ -97,30 +96,41 @@ class UtilFunctions {
     } else {
       await file.writeAsString(questionToText(subject, topic, questionsList));
     }
-    if (context == null || !context.mounted) return;
+
+    if (!context.mounted) return;
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Examiter'),
+          title: const Text('File Saved'),
           icon: const Icon(
-            Icons.download_for_offline_sharp,
+            Icons.check_circle_outline,
             color: Colors.green,
+            size: 40,
           ),
           content: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('File saved successfully'),
-              TextButton(
-                  onPressed: () async {
-                    final uri = Uri.file(filePath);
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri);
-                    }
-                    if (context.mounted) {
-                      Navigator.of(context).pop();
-                    }
-                  },
-                  child: Text(filePath)),
+              const Text('Your MCQs have been saved successfully to:'),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SelectableText(
+                  filePath,
+                  style: const TextStyle(fontSize: 12, color: Colors.blueGrey),
+                  textAlign: TextAlign.start,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Note: You can open this file using your device\'s File Manager.',
+                style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic),
+              ),
             ],
           ),
           actions: [
@@ -131,8 +141,6 @@ class UtilFunctions {
         );
       },
     );
-
-// jsonFileIo.writeJson('$subjectID-$topicID', jsonEncode(questions));
   };
 
   static String removeCommas(String original) {

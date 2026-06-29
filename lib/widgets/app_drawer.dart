@@ -59,9 +59,9 @@ class _AppDrawerState extends State<AppDrawer> {
                     padding: const EdgeInsets.all(12.0),
                     child: Column(
                       children: [
-                        ChapterNameTextFieldWidget(),
-                        const SizedBox(height: 12),
                         SubjectNameTextFieldWidget(),
+                        const SizedBox(height: 12),
+                        ChapterNameTextFieldWidget(),
                       ],
                     ),
                   ),
@@ -236,50 +236,56 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   Widget _buildModernHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.only(top: 60, bottom: 24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.green.shade600, Colors.green.shade800],
+    return Builder(builder: (context) {
+      final theme = Theme.of(context);
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.only(top: 60, bottom: 24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              theme.colorScheme.primary,
+              theme.colorScheme.primary.withValues(alpha: 0.8)
+            ],
+          ),
         ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: Image.asset(
+                'assets/images/icon.png',
+                height: 70,
+                width: 70,
+              ),
             ),
-            child: Image.asset(
-              'assets/images/icon.png',
-              height: 70,
-              width: 70,
+            const SizedBox(height: 12),
+            const Text(
+              'MCQs Generator AI',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                letterSpacing: 0.5,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'MCQs Generator AI',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-              letterSpacing: 0.5,
+            Text(
+              'Advanced Generation Suite',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.8),
+                fontSize: 13,
+              ),
             ),
-          ),
-          Text(
-            'Advanced Generation Suite',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.8),
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+    });
   }
 
   Widget _buildSectionTitle(String title) {

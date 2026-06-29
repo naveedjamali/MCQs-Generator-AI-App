@@ -18,7 +18,7 @@ class ShowAnswers extends StatelessWidget {
           ),
           value: controller.showAnswers.value,
           onChanged: (value) => controller.setShowAnswers(value),
-          activeTrackColor: Colors.green.shade700,
+          activeTrackColor: Theme.of(context).colorScheme.primary,
           dense: true,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
         ));

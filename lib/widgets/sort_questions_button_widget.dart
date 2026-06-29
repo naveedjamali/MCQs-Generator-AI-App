@@ -12,15 +12,15 @@ class SortQuestionsButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(4.0),
-      child: MaterialButton(
-          onPressed: controller.sortByName,
-          child: const Row(
-            children: [
-              Icon(Icons.sort),
-              Text(' Sort Questions'),
-            ],
-          )),
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+      child: TextButton.icon(
+        onPressed: controller.sortByName,
+        icon: const Icon(Icons.sort, size: 20),
+        label: const Text('Sort'),
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.blueGrey.shade700,
+        ),
+      ),
     );
   }
 }

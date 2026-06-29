@@ -42,7 +42,6 @@ class Homepage extends StatelessWidget {
           showHistory: () => _showHistoryDialog(context),
         ),
         appBar: AppBar(
-          backgroundColor: Colors.green,
           title: Obx(() => controller.showSearchField.value
               ? TextField(
                   controller: controller.searchController,

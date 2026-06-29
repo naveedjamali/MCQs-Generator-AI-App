@@ -11,17 +11,17 @@ class DeleteAllQuestionsWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: MaterialButton(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+      child: TextButton.icon(
         onPressed: () => deleteQuestions(context),
-        child: const Row(
-          children: [
-            Icon(
-              Icons.delete,
-              color: Colors.red,
-            ),
-            Text(' Delete Questions'),
-          ],
+        icon: const Icon(
+          Icons.delete_outline,
+          color: Colors.red,
+          size: 20,
+        ),
+        label: const Text(
+          'Delete All',
+          style: TextStyle(color: Colors.red),
         ),
       ),
     );
