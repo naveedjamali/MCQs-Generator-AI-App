@@ -53,6 +53,7 @@ class ApiKeyWidget extends StatelessWidget {
                         onPressed: () async {
                           bool saved = await controller
                               .saveApiKeyInStorage(apiKeyController.text);
+                          if (!context.mounted) return;
                           if (saved) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(

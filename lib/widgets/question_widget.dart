@@ -39,29 +39,50 @@ class _QuestionWidgetState extends State<QuestionWidget> {
     bool plainText =
         widget.question.body?.contentType?.toLowerCase() == "plain";
 
-    return Column(
-      children: [
-        _buildHeader(plainText),
-        _buildAnswerList(),
-      ],
+    return Dismissible(
+      key: Key(
+          'question_${widget.index}_${widget.question.body?.content.hashCode}'),
+      direction: DismissDirection.horizontal,
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          // Swipe Right: Edit
+          editQuestion();
+          return false;
+        } else {
+          // Swipe Left: Delete
+          widget.deleteQuestion(widget.index);
+          return true;
+        }
+      },
+      background: Container(
+        color: Colors.blue.withValues(alpha: 0.8),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.only(left: 20.0),
+        child: const Icon(Icons.edit, color: Colors.white),
+      ),
+      secondaryBackground: Container(
+        color: Colors.red.withValues(alpha: 0.8),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20.0),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      child: Column(
+        children: [
+          _buildHeader(plainText),
+          _buildAnswerList(),
+        ],
+      ),
     );
   }
 
   Widget _buildHeader(bool plainText) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        IconButton(
-          onPressed: editQuestion,
-          icon: const Icon(Icons.edit, color: Colors.grey),
-        ),
-        IconButton(
-          onPressed: () => copyText(widget.question.body!.content.toString()),
-          icon: const Icon(Icons.copy, color: Colors.grey),
-        ),
         Expanded(
-          flex: 1,
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding:
+                const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
             child: GestureDetector(
               onTap: () => setState(() {
                 showAnswers = !showAnswers;
@@ -78,7 +99,6 @@ class _QuestionWidgetState extends State<QuestionWidget> {
                           style: questionStyle,
                         ),
                         Expanded(
-                          // constraints: BoxConstraints(maxWidth: 500),
                           child: SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: getLatexWidget(
@@ -91,8 +111,9 @@ class _QuestionWidgetState extends State<QuestionWidget> {
           ),
         ),
         IconButton(
-          onPressed: () => widget.deleteQuestion(widget.index),
-          icon: const Icon(Icons.delete_forever_rounded, color: Colors.grey),
+          onPressed: () => copyText(widget.question.body!.content.toString()),
+          icon: const Icon(Icons.copy, color: Colors.grey),
+          tooltip: 'Copy Question',
         ),
       ],
     );

@@ -51,7 +51,7 @@ class Save {
   static Function saveMCQs = (String subjectID, String topicID,
       List<Question> questions, BuildContext context, bool saveAsJSON) async {
     try {
-      String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
+      String? selectedDirectory = await FilePicker.getDirectoryPath(
         dialogTitle: 'Choose a location to save the file',
       );
       if (selectedDirectory == null) {

@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:csv/csv.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -15,7 +14,7 @@ class AppController extends GetxController {
   RxString queryText = "".obs;
   RxString apiKey = "".obs;
   RxString selectedModel = "gemini-2.0-flash".obs;
-  RxString csv = ''.obs;
+  RxString csvOutput = ''.obs;
   RxString topicID = 'Computer System'.obs;
   RxString subject = 'Computer Studies'.obs;
 
@@ -48,6 +47,7 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
   final isSearchMode = false.obs;
   final isCovertCSVMode = false.obs;
   final useAiToGenerateEssay = true.obs;
+  final isManualEssayMode = false.obs;
   final isAscendingOrder = true.obs;
   final searchBoxEnabled = false.obs;
 
@@ -172,7 +172,7 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
     subject.value = subjectController.text.trim();
     int addedQuestionCount = 0;
 
-    String input = csv.trim();
+    String input = csvOutput.value.trim();
     List<Question> temp = [];
 
     String delimiter = ',,,';
@@ -192,14 +192,12 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
 
     input = joint;
 
-    List<List<dynamic>> rows = const CsvToListConverter().convert(
-      input,
-      fieldDelimiter: delimiter,
-      eol: '\n',
-      shouldParseNumbers: true,
-      convertEmptyTo: '\n',
-      allowInvalid: false,
-    );
+    List<List<dynamic>> rows = input
+        .split('\n')
+        .where((s) => s.trim().isNotEmpty)
+        .map((s) => s.split(delimiter))
+        .toList();
+
     // const csvConverter = CsvToListConverter();
     //csvConverter;
     for (List<dynamic> row in rows) {
@@ -357,7 +355,7 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
     update();
   }
 
-  addEntry(String entry) {
+  void addEntry(String entry) {
     if (!useAiToGenerateEssay.value) {
       essays.insert(0, entry);
     } else {
@@ -380,12 +378,6 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
   Future<String?> askAI(Content instructions, String query) async {
     // Access your API key as an environment variable
     String modelName = selectedModel.value;
-
-    // Explicitly determine the correct API version and model ID format
-    String apiVersion = 'v1';
-    if (modelName.contains('2.0') || modelName.contains('lite')) {
-      apiVersion = 'v1beta';
-    }
 
     final model = GenerativeModel(
       model:
@@ -445,7 +437,7 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
   Future<void> getAIDescription(String text, BuildContext context) async {
     setGeneratingResponse(true);
     try {
-      if (!useAiToGenerateEssay.value) {
+      if (isManualEssayMode.value || !useAiToGenerateEssay.value) {
         String? csvResponse = await getCsvResponse(text);
         if (csvResponse != null) {
           if (context.mounted) {
@@ -522,11 +514,11 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
   }
 
   void setCSV(String value) {
-    csv.value = value;
+    csvOutput.value = value;
     update();
   }
 
-  deleteQuestion(int questionIndex) {
+  void deleteQuestion(int questionIndex) {
     questions.removeAt(questionIndex);
     update();
   }

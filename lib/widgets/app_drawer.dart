@@ -23,6 +23,7 @@ class AppDrawer extends StatefulWidget {
     required this.setSearchMode,
     required this.setFourAnswersFilter,
     required this.getFourAnswersFilter,
+    required this.showHistory,
     super.key,
   });
 
@@ -35,6 +36,7 @@ class AppDrawer extends StatefulWidget {
   final TextEditingController searchController;
   final void Function(bool) setFourAnswersFilter;
   final bool Function() getFourAnswersFilter;
+  final void Function() showHistory;
 
   @override
   State<AppDrawer> createState() => _AppDrawerState();
@@ -46,187 +48,307 @@ class _AppDrawerState extends State<AppDrawer> {
     return Drawer(
       child: Column(
         children: [
-          DrawerHeader(
-            decoration: const BoxDecoration(color: Colors.green),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset(
-                  'assets/images/icon.png',
-                  height: 60,
-                  width: 60,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Generation Settings',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18),
-                ),
-              ],
-            ),
-          ),
+          _buildModernHeader(),
           Expanded(
             child: ListView(
-              padding: EdgeInsets.zero,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               children: [
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text("Project Info",
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Column(
-                    children: [
-                      ChapterNameTextFieldWidget(),
-                      const SizedBox(height: 12),
-                      SubjectNameTextFieldWidget(),
+                _buildSectionTitle('Project Info'),
+                _buildModernCard([
+                  Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      children: [
+                        ChapterNameTextFieldWidget(),
+                        const SizedBox(height: 12),
+                        SubjectNameTextFieldWidget(),
+                      ],
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: 16),
+                _buildSectionTitle('Display Filters'),
+                _buildModernCard([
+                  ShowAnswers(),
+                  ShowQuestionsWithFourAnswersOnly(),
+                ]),
+                const SizedBox(height: 16),
+                _buildSectionTitle('Export & Actions'),
+                _buildModernCard([
+                  _buildDrawerItem(
+                    icon: Icons.save,
+                    title: 'Save as JSON',
+                    onTap: () {
+                      UtilFunctions.saveMCQs(
+                          widget.controller.subject.value,
+                          widget.controller.topicID.value,
+                          widget.controller.questions,
+                          Get.context,
+                          true);
+                      Get.back();
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.save_as,
+                    title: 'Save as TEXT',
+                    onTap: () {
+                      UtilFunctions.saveMCQs(
+                          widget.controller.subject.value,
+                          widget.controller.topicID.value,
+                          widget.controller.questions,
+                          Get.context,
+                          false);
+                      Get.back();
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.copy,
+                    title: 'Copy JSON',
+                    onTap: () => copyQuestionsAsJSON(context),
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.copy_all,
+                    title: 'Copy TEXT',
+                    onTap: () => copyQuestionsAsText(context),
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.history,
+                    title: 'Generation History',
+                    onTap: () {
+                      Get.back();
+                      widget.showHistory();
+                    },
+                  ),
+                ]),
+                const SizedBox(height: 16),
+                _buildSectionTitle('Generation Modes'),
+                _buildModernCard([
+                  _buildSwitchTile(
+                    'CSV Mode',
+                    widget.controller.isCovertCSVMode,
+                    (value) {
+                      widget.controller.isCovertCSVMode.value = value;
+                      if (value) {
+                        widget.controller.isManualEssayMode.value = false;
+                      }
+                    },
+                  ),
+                  _buildSwitchTile(
+                    'Manual Essay Mode',
+                    widget.controller.isManualEssayMode,
+                    (value) {
+                      widget.controller.isManualEssayMode.value = value;
+                      if (value) {
+                        widget.controller.isCovertCSVMode.value = false;
+                      }
+                    },
+                  ),
+                  Obx(() => !widget.controller.isManualEssayMode.value &&
+                          !widget.controller.isCovertCSVMode.value
+                      ? _buildSwitchTile(
+                          'AI Write Essay First',
+                          widget.controller.useAiToGenerateEssay,
+                          (value) => widget
+                              .controller.useAiToGenerateEssay.value = value,
+                        )
+                      : const SizedBox.shrink()),
+                  ListTile(
+                    title: FilledButton.icon(
+                      onPressed: widget.pickAndLoadQuestions,
+                      icon: const Icon(Icons.file_open, size: 20),
+                      label: const Text('Load JSON File'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.green.shade700,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: 16),
+                _buildSectionTitle('AI Configuration'),
+                _buildModernCard([
+                  Obx(() => _buildDrawerItem(
+                        icon: Icons.smart_toy_outlined,
+                        title: 'AI Model',
+                        subtitle: widget.controller.selectedModel.value,
+                        onTap: () => _showModelSelectionDialog(context),
+                      )),
+                  _buildDrawerItem(
+                    icon: Icons.description_outlined,
+                    title: 'CSV Instructions',
+                    onTap: () => _showInstructionsEditDialog(
+                      context,
+                      'CSV Instructions',
+                      widget.controller.csvInstructions.value,
+                      (val) =>
+                          widget.controller.saveCsvInstructionsToStorage(val),
+                    ),
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.article_outlined,
+                    title: 'Essay Instructions',
+                    onTap: () => _showInstructionsEditDialog(
+                      context,
+                      'Essay Instructions',
+                      widget.controller.essayInstructions.value,
+                      (val) =>
+                          widget.controller.saveEssayInstructionsToStorage(val),
+                    ),
+                  ),
+                  const ApiKeyWidget(),
+                ]),
+                const SizedBox(height: 16),
+                _buildModernCard([
+                  AboutListTile(
+                    icon: const Icon(Icons.info_outline),
+                    applicationName: 'MCQs Generator AI',
+                    applicationVersion: '1.0.5',
+                    applicationIcon: Image.asset(
+                      'assets/images/icon.png',
+                      height: 50,
+                      width: 50,
+                    ),
+                    aboutBoxChildren: const [
+                      Text(
+                          'A powerful AI-driven tool to generate MCQs from topics or essays.'),
+                      SizedBox(height: 10),
+                      Text(
+                          'Developed for Govt: Boys Degree College Nawabshah.'),
                     ],
                   ),
-                ),
-                const Divider(),
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text("Display Filters",
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-                ShowAnswers(),
-                ShowQuestionsWithFourAnswersOnly(),
-                const Divider(),
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text("Export & Actions",
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-                ListTile(
-                  onTap: () {
-                    UtilFunctions.saveMCQs(
-                        widget.controller.subject.value,
-                        widget.controller.topicID.value,
-                        widget.controller.questions,
-                        Get.context,
-                        true);
-                    Get.back();
-                  },
-                  leading: const Icon(Icons.save),
-                  title: const Text('Save as JSON'),
-                ),
-                ListTile(
-                  onTap: () {
-                    UtilFunctions.saveMCQs(
-                        widget.controller.subject.value,
-                        widget.controller.topicID.value,
-                        widget.controller.questions,
-                        Get.context,
-                        false);
-                    Get.back();
-                  },
-                  leading: const Icon(Icons.save_as),
-                  title: const Text('Save as TEXT'),
-                ),
-                ListTile(
-                  onTap: () => copyQuestionsAsJSON(context),
-                  leading: const Icon(Icons.copy),
-                  title: const Text('Copy JSON'),
-                ),
-                ListTile(
-                  onTap: () => copyQuestionsAsText(context),
-                  leading: const Icon(Icons.copy_all),
-                  title: const Text('Copy TEXT'),
-                ),
-                const Divider(),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Row(
-                    children: [
-                      const Text('CSV Mode'),
-                      const Spacer(),
-                      Obx(() => Switch(
-                            value: widget.controller.isCovertCSVMode.value,
-                            onChanged: (value) =>
-                                widget.controller.isCovertCSVMode.value = value,
-                          )),
-                    ],
+                ]),
+                const SizedBox(height: 24),
+                const Center(
+                  child: Text(
+                    'Powered by: Effordea',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 ),
-                const Divider(),
-                ListTile(
-                  title: FilledButton.icon(
-                    onPressed: widget.pickAndLoadQuestions,
-                    icon: const Icon(Icons.file_open),
-                    label: const Text('Load JSON File'),
-                  ),
-                ),
-                const Divider(),
-                Obx(() => ListTile(
-                      leading: const Icon(Icons.smart_toy_outlined),
-                      title: const Text('AI Model'),
-                      subtitle: Text(widget.controller.selectedModel.value),
-                      trailing: const Icon(Icons.edit, size: 18),
-                      onTap: () => _showModelSelectionDialog(context),
-                    )),
-                const Divider(),
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text("System Instructions",
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.description_outlined),
-                  title: const Text('CSV Instructions'),
-                  trailing: const Icon(Icons.edit, size: 18),
-                  onTap: () => _showInstructionsEditDialog(
-                    context,
-                    'CSV Instructions',
-                    widget.controller.csvInstructions.value,
-                    (val) =>
-                        widget.controller.saveCsvInstructionsToStorage(val),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.article_outlined),
-                  title: const Text('Essay Instructions'),
-                  trailing: const Icon(Icons.edit, size: 18),
-                  onTap: () => _showInstructionsEditDialog(
-                    context,
-                    'Essay Instructions',
-                    widget.controller.essayInstructions.value,
-                    (val) =>
-                        widget.controller.saveEssayInstructionsToStorage(val),
-                  ),
-                ),
-                const Divider(),
-                const ApiKeyWidget(),
-                const Divider(),
-                AboutListTile(
-                  icon: const Icon(Icons.info_outline),
-                  applicationName: 'MCQs Generator AI',
-                  applicationVersion: '1.0.5',
-                  applicationIcon: Image.asset(
-                    'assets/images/icon.png',
-                    height: 50,
-                    width: 50,
-                  ),
-                  aboutBoxChildren: const [
-                    Text(
-                        'A powerful AI-driven tool to generate MCQs from topics or essays.'),
-                    SizedBox(height: 10),
-                    Text('Developed for Govt: Boys Degree College Nawabshah.'),
-                  ],
-                ),
+                const SizedBox(height: 16),
               ],
             ),
-          ),
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text('Powered by: Effordea',
-                style: TextStyle(color: Colors.grey, fontSize: 12)),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildModernHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(top: 60, bottom: 24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.green.shade600, Colors.green.shade800],
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: Image.asset(
+              'assets/images/icon.png',
+              height: 70,
+              width: 70,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'MCQs Generator AI',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              letterSpacing: 0.5,
+            ),
+          ),
+          Text(
+            'Advanced Generation Suite',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.8),
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, bottom: 8, top: 4),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          color: Colors.green.shade800,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernCard(List<Widget> children) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      color: Colors.grey.shade50,
+      child: Column(
+        children: children,
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.green.shade700, size: 22),
+      title: Text(
+        title,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+      ),
+      subtitle: subtitle != null
+          ? Text(subtitle, style: const TextStyle(fontSize: 12))
+          : null,
+      trailing: const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
+      onTap: onTap,
+      dense: true,
+      visualDensity: VisualDensity.compact,
+    );
+  }
+
+  Widget _buildSwitchTile(
+    String title,
+    RxBool value,
+    Function(bool) onChanged,
+  ) {
+    return Obx(() => SwitchListTile.adaptive(
+          title: Text(
+            title,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+          value: value.value,
+          onChanged: onChanged,
+          activeTrackColor: Colors.green.shade700,
+          dense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+        ));
   }
 
   void _showInstructionsEditDialog(
@@ -282,6 +404,10 @@ class _AppDrawerState extends State<AppDrawer> {
       'gemini-1.5-flash-8b': 'Gemini 1.5 Flash-8B',
       'gemini-2.0-flash': 'Gemini 2.0 Flash',
       'gemini-2.0-flash-lite-preview-02-05': 'Gemini 2.0 Flash Lite',
+      'gemini-2.5-flash': 'Gemini 2.5 Flash',
+      'gemini-3-flash-preview': 'Gemini 3 Flash (Preview)',
+      'gemini-3.1-flash-lite-preview': 'Gemini 3.1 Flash Lite',
+      'gemini-3.5-flash': 'Gemini 3.5 Flash',
     };
 
     showDialog(
@@ -298,7 +424,9 @@ class _AppDrawerState extends State<AppDrawer> {
                     onChanged: (value) async {
                       if (value != null) {
                         await widget.controller.saveModelToStorage(value);
-                        Navigator.pop(context);
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                        }
                       }
                     },
                   )))
@@ -315,18 +443,22 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   void copyQuestionsAsJSON(BuildContext context) async {
-    await Clipboard.setData(
-        ClipboardData(text: jsonEncode(widget.controller.questions)));
+    final questions = jsonEncode(widget.controller.questions);
+    await Clipboard.setData(ClipboardData(text: questions));
 
-    showQuestionsCopiedMessageOnScreen(context);
+    if (context.mounted) {
+      showQuestionsCopiedMessageOnScreen(context);
+    }
   }
 
   void copyQuestionsAsText(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(
-        text: UtilFunctions.questionToText(widget.controller.subject.value,
-            widget.controller.topicID.value, widget.controller.questions)));
+    final text = UtilFunctions.questionToText(widget.controller.subject.value,
+        widget.controller.topicID.value, widget.controller.questions);
+    await Clipboard.setData(ClipboardData(text: text));
 
-    showQuestionsCopiedMessageOnScreen(context);
+    if (context.mounted) {
+      showQuestionsCopiedMessageOnScreen(context);
+    }
   }
 
   void showQuestionsCopiedMessageOnScreen(BuildContext context) {

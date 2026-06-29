@@ -11,14 +11,16 @@ class ShowQuestionsWithFourAnswersOnly extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Filter questions with not 4 answers '),
-            Checkbox(
-                value: controller.isFilteringFourAnswers.value,
-                onChanged: (value) => controller.setFilteringFourOptions(value))
-          ],
+    return Obx(() => SwitchListTile.adaptive(
+          title: const Text(
+            'Filter non-4 answer questions',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+          value: controller.isFilteringFourAnswers.value,
+          onChanged: (value) => controller.setFilteringFourOptions(value),
+          activeTrackColor: Colors.green.shade700,
+          dense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
         ));
   }
 }

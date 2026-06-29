@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:mcqs_generator_ai_app/models.dart';
 import 'package:path_provider/path_provider.dart';
@@ -98,6 +97,7 @@ class UtilFunctions {
     } else {
       await file.writeAsString(questionToText(subject, topic, questionsList));
     }
+    if (context == null || !context.mounted) return;
     showDialog(
       context: context,
       builder: (context) {
@@ -116,7 +116,9 @@ class UtilFunctions {
                     if (await canLaunchUrl(uri)) {
                       await launchUrl(uri);
                     }
-                    Navigator.of(context).pop();
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                    }
                   },
                   child: Text(filePath)),
             ],

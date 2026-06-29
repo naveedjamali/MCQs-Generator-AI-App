@@ -11,33 +11,18 @@ class GeneratingQuestionsProgressIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool isMobile = MediaQuery.of(context).size.width < 600;
     return Obx(() => controller.generatingResponse.value
-        ? Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!isMobile)
-                const Text(
-                  'Generating MCQs with Google Gemini AI',
-                  style: TextStyle(color: Colors.white),
-                ),
-              if (!isMobile)
-                const SizedBox(
-                  width: 16,
-                ),
-              const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 3,
-                  ),
-                ),
+        ? const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8.0),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
               ),
-            ],
+            ),
           )
-        : Container());
+        : const SizedBox.shrink());
   }
 }

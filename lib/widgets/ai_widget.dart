@@ -9,40 +9,67 @@ class AiWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final viewInsets = MediaQuery.of(context).viewInsets;
+    final isKeyboardOpen = viewInsets.bottom > 0;
+    final maxHeight =
+        MediaQuery.of(context).size.height * (isKeyboardOpen ? 0.2 : 0.4);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          children: [
-            Expanded(
+        Obx(() => ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: maxHeight),
               child: TextField(
                 focusNode: controller.inputFocusNode,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (value) => _handleSubmission(context),
+                textInputAction: controller.isManualEssayMode.value
+                    ? TextInputAction.newline
+                    : TextInputAction.send,
+                onSubmitted: (value) {
+                  if (!controller.isManualEssayMode.value) {
+                    _handleSubmission(context);
+                  }
+                },
                 decoration: InputDecoration(
                   labelText: controller.isCovertCSVMode.value
                       ? 'Paste CSV content here'
-                      : 'E.g. photosynthesis process, RAM vs ROM',
-                  hintText: 'Enter topic or CSV...',
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.green),
-                    onPressed: () => _handleSubmission(context),
-                  ),
+                      : controller.isManualEssayMode.value
+                          ? 'Write or Paste your Essay here'
+                          : 'E.g. photosynthesis process, RAM vs ROM',
+                  hintText: controller.isManualEssayMode.value
+                      ? 'Paste full essay content...'
+                      : 'Enter topic or CSV...',
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(25),
+                    borderRadius: BorderRadius.circular(15),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                 ),
-                maxLines: 3,
+                maxLines: controller.isManualEssayMode.value
+                    ? (isKeyboardOpen ? 4 : 6)
+                    : 3,
                 minLines: 1,
                 keyboardType: TextInputType.multiline,
                 controller: controller.inputController,
               ),
-            ),
-            IconButton(
+            )),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton.icon(
               onPressed: () => controller.clearEntries(),
               icon: const Icon(Icons.delete_outline, color: Colors.red),
-              tooltip: 'Clear History',
+              label: const Text('Clear History'),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton.icon(
+              onPressed: () => _handleSubmission(context),
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('Generate MCQs'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),

@@ -64,7 +64,7 @@ class SearchTextInQuestionsForm extends StatelessWidget {
       child: ActionChip(
         label: Text(label, style: const TextStyle(fontSize: 12)),
         onPressed: () => controller.setSearchText(label.toLowerCase()),
-        backgroundColor: Colors.green.withOpacity(0.1),
+        backgroundColor: Colors.green.withValues(alpha: 0.1),
       ),
     );
   }

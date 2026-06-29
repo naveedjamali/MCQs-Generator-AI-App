@@ -17,6 +17,7 @@ import 'package:mcqs_generator_ai_app/widgets/shuffle_questions_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/sort_questions_button_widget.dart';
 
 import 'delete_all_questions_widget.dart';
+import 'entries_widget.dart';
 import 'generating_questions_progress_indicator_widget.dart';
 
 class Homepage extends StatelessWidget {
@@ -38,6 +39,7 @@ class Homepage extends StatelessWidget {
           getFourAnswersFilter: () => controller.isFilteringFourAnswers.value,
           setFourAnswersFilter: (value) =>
               controller.isFilteringFourAnswers.value = value,
+          showHistory: () => _showHistoryDialog(context),
         ),
         appBar: AppBar(
           backgroundColor: Colors.green,
@@ -49,7 +51,8 @@ class Homepage extends StatelessWidget {
                   cursorColor: Colors.white,
                   decoration: InputDecoration(
                     hintText: 'Filter questions...',
-                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+                    hintStyle:
+                        TextStyle(color: Colors.white.withValues(alpha: 0.6)),
                     border: InputBorder.none,
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.clear, color: Colors.white),
@@ -64,19 +67,9 @@ class Homepage extends StatelessWidget {
                     controller.setSearchMode(value.isNotEmpty);
                   },
                 )
-              : Row(
-                  children: [
-                    Image.asset(
-                      'assets/images/icon.png',
-                      height: 30,
-                      width: 30,
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      "MCQs Generator AI",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ],
+              : const Text(
+                  "MCQs Generator AI",
+                  style: TextStyle(color: Colors.white),
                 )),
           actions: [
             Obx(() => IconButton(
@@ -136,35 +129,49 @@ class Homepage extends StatelessWidget {
               child: QuestionsListWidget(),
             ),
             // Prompt Input at the bottom
-            Obx(() => controller.showAiInput.value
-                ? Container(
-                    padding: const EdgeInsets.all(8.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, -2),
-                        ),
-                      ],
-                    ),
-                    child: AiWidget(),
-                  )
-                : const SizedBox.shrink()),
+            Container(
+              padding: const EdgeInsets.all(8.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: AiWidget(),
+            ),
           ],
         ),
-        floatingActionButton: FloatingActionButton(
-          mini: true,
-          onPressed: () => controller.showAiInput.toggle(),
-          backgroundColor: Colors.green,
-          child: Obx(() => Icon(
-                controller.showAiInput.value
-                    ? Icons.keyboard_arrow_down
-                    : Icons.add,
-                color: Colors.white,
-              )),
+      ),
+    );
+  }
+
+  void _showHistoryDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Generation History'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 400,
+          child: EntriesWidget(),
         ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              controller.clearEntries();
+              Navigator.pop(context);
+            },
+            child: const Text('Clear All', style: TextStyle(color: Colors.red)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
@@ -191,18 +198,22 @@ class Homepage extends StatelessWidget {
   }
 
   void copyQuestionsAsJSON(BuildContext context) async {
-    await Clipboard.setData(
-        ClipboardData(text: jsonEncode(controller.questions)));
+    final questions = jsonEncode(controller.questions);
+    await Clipboard.setData(ClipboardData(text: questions));
 
-    showQuestionsCopiedMessageOnScreen(context);
+    if (context.mounted) {
+      showQuestionsCopiedMessageOnScreen(context);
+    }
   }
 
   void copyQuestionsAsText(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(
-        text: UtilFunctions.questionToText(controller.subject.value,
-            controller.topicID.value, controller.questions)));
+    final text = UtilFunctions.questionToText(controller.subject.value,
+        controller.topicID.value, controller.questions);
+    await Clipboard.setData(ClipboardData(text: text));
 
-    showQuestionsCopiedMessageOnScreen(context);
+    if (context.mounted) {
+      showQuestionsCopiedMessageOnScreen(context);
+    }
   }
 
   void deleteQuestions(BuildContext context) {
@@ -250,7 +261,7 @@ class Homepage extends StatelessWidget {
   void pickAndLoadQuestions(BuildContext context) async {
     try {
       // Open the file picker
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
       );
@@ -283,6 +294,7 @@ class Homepage extends StatelessWidget {
 
           controller.questions.addAll(loadedQuestions);
 
+          if (!context.mounted) return;
           showDialog(
             context: context,
             builder: (context) {

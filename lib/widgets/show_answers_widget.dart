@@ -11,14 +11,16 @@ class ShowAnswers extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Show answers'),
-            Checkbox(
-                value: controller.showAnswers.value,
-                onChanged: (value) => controller.setShowAnswers(value))
-          ],
+    return Obx(() => SwitchListTile.adaptive(
+          title: const Text(
+            'Show answers',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+          value: controller.showAnswers.value,
+          onChanged: (value) => controller.setShowAnswers(value),
+          activeTrackColor: Colors.green.shade700,
+          dense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
         ));
   }
 }
