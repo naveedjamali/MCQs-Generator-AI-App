@@ -4,6 +4,8 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   file_saver
+  file_selector_windows
+  printing
   screen_retriever_windows
   url_launcher_windows
   window_manager

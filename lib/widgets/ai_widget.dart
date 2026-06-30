@@ -17,34 +17,100 @@ class AiWidget extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        Obx(() => controller.isPdfMode.value
+            ? Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                color: Colors.blue.shade50,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.blue.shade100)),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: controller.pdfPagesController,
+                              decoration: InputDecoration(
+                                labelText: 'Target Pages',
+                                hintText: 'e.g. 1-5, 10',
+                                prefixIcon: const Icon(Icons.pages_outlined,
+                                    color: Colors.blue),
+                                border: InputBorder.none,
+                                filled: false,
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                          const VerticalDivider(),
+                          TextButton.icon(
+                            onPressed: () =>
+                                controller.pickAndExtractFromPdf(context),
+                            icon: const Icon(Icons.picture_as_pdf),
+                            label: const Text('Pick File'),
+                            style: TextButton.styleFrom(
+                                foregroundColor: Colors.blue.shade800),
+                          ),
+                        ],
+                      ),
+                      const Divider(),
+                      TextField(
+                        controller: controller.pdfInstructionsController,
+                        decoration: InputDecoration(
+                          labelText: 'PDF Focus / Chapter Details',
+                          hintText: 'e.g. focus on the third chapter only',
+                          prefixIcon: const Icon(Icons.info_outline,
+                              color: Colors.blue),
+                          border: InputBorder.none,
+                          filled: false,
+                          isDense: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : const SizedBox.shrink()),
         Obx(() => ConstrainedBox(
               constraints: BoxConstraints(maxHeight: maxHeight),
               child: TextField(
                 focusNode: controller.inputFocusNode,
-                textInputAction: controller.isManualEssayMode.value
+                textInputAction: (controller.isManualEssayMode.value ||
+                        controller.isPdfMode.value)
                     ? TextInputAction.newline
                     : TextInputAction.send,
                 onSubmitted: (value) {
-                  if (!controller.isManualEssayMode.value) {
+                  if (!controller.isManualEssayMode.value &&
+                      !controller.isPdfMode.value) {
                     _handleSubmission(context);
                   }
                 },
                 decoration: InputDecoration(
                   labelText: controller.isCovertCSVMode.value
                       ? 'Paste CSV content here'
-                      : controller.isManualEssayMode.value
-                          ? 'Write or Paste your Essay here'
-                          : 'E.g. photosynthesis process, RAM vs ROM',
-                  hintText: controller.isManualEssayMode.value
-                      ? 'Paste full essay content...'
-                      : 'Enter topic or CSV...',
+                      : controller.isPdfMode.value
+                          ? 'Extracted PDF Text (Editable)'
+                          : controller.isManualEssayMode.value
+                              ? 'Write or Paste your Essay here'
+                              : 'E.g. photosynthesis process, RAM vs ROM',
+                  hintText: controller.isCovertCSVMode.value
+                      ? 'Paste CSV...'
+                      : controller.isPdfMode.value
+                          ? 'Extracted text will appear here after picking a file...'
+                          : controller.isManualEssayMode.value
+                              ? 'Paste full essay content...'
+                              : 'Enter topic...',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                 ),
-                maxLines: controller.isManualEssayMode.value
+                maxLines: (controller.isManualEssayMode.value ||
+                        controller.isPdfMode.value)
                     ? (isKeyboardOpen ? 4 : 6)
                     : 3,
                 minLines: 1,
@@ -56,10 +122,19 @@ class AiWidget extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
+            if (!controller.isCovertCSVMode.value &&
+                !controller.isPdfMode.value)
+              IconButton(
+                onPressed: () => controller.pickAndExtractFromImage(context),
+                icon: const Icon(Icons.camera_alt_outlined,
+                    color: Colors.blueGrey),
+                tooltip: 'Extract from Image (OCR)',
+              ),
+            const Spacer(),
             TextButton.icon(
               onPressed: () => controller.clearEntries(),
               icon: const Icon(Icons.delete_outline, color: Colors.red),
-              label: const Text('Clear History'),
+              label: const Text('Clear'),
             ),
             const SizedBox(width: 8),
             ElevatedButton.icon(
@@ -95,7 +170,6 @@ class AiWidget extends StatelessWidget {
     } else {
       String text = controller.inputController.text;
       controller.addEntry(text);
-      controller.setGeneratingResponse(true);
 
       try {
         await controller.getAIDescription(text, context);

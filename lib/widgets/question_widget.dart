@@ -23,6 +23,7 @@ class QuestionWidget extends StatefulWidget {
 
 class _QuestionWidgetState extends State<QuestionWidget> {
   bool showAnswers = false;
+  bool showExplanation = false;
   final questionStyle =
       const TextStyle(fontSize: 16, fontWeight: FontWeight.bold);
   final answerStyle = const TextStyle(fontSize: 16);
@@ -36,6 +37,22 @@ class _QuestionWidgetState extends State<QuestionWidget> {
 
   @override
   Widget build(BuildContext context) {
+    String rawContent = widget.question.body?.content ?? '';
+    String questionText;
+    String explanationText = '';
+
+    if (rawContent.contains('[[EXPL]]')) {
+      List<String> parts = rawContent.split('[[EXPL]]');
+      questionText = parts[0].trim();
+      explanationText = parts[1].trim();
+    } else if (rawContent.contains('Explanation:')) {
+      List<String> parts = rawContent.split('Explanation:');
+      questionText = parts[0].trim();
+      explanationText = parts[1].trim();
+    } else {
+      questionText = rawContent;
+    }
+
     bool plainText =
         widget.question.body?.contentType?.toLowerCase() == "plain";
 
@@ -66,16 +83,62 @@ class _QuestionWidgetState extends State<QuestionWidget> {
         padding: const EdgeInsets.only(right: 20.0),
         child: const Icon(Icons.delete, color: Colors.white),
       ),
-      child: Column(
-        children: [
-          _buildHeader(plainText),
-          _buildAnswerList(),
-        ],
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(plainText, questionText, explanationText),
+            _buildAnswerList(),
+            if (showExplanation && explanationText.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 12.0),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blueGrey.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.blueGrey.shade100),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.auto_awesome,
+                              size: 16, color: Colors.blueGrey.shade700),
+                          const SizedBox(width: 8),
+                          Text('AI EXPLANATION',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                  letterSpacing: 1.1,
+                                  color: Colors.blueGrey.shade700)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        explanationText,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.blueGrey.shade900,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildHeader(bool plainText) {
+  Widget _buildHeader(
+      bool plainText, String questionText, String explanationText) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -89,7 +152,7 @@ class _QuestionWidgetState extends State<QuestionWidget> {
               }),
               child: plainText
                   ? Text(
-                      '${widget.index + 1}: ${widget.question.body?.content ?? ''}',
+                      '${widget.index + 1}: $questionText',
                       style: questionStyle,
                     )
                   : Row(
@@ -101,8 +164,7 @@ class _QuestionWidgetState extends State<QuestionWidget> {
                         Expanded(
                           child: SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
-                            child: getLatexWidget(
-                                widget.question.body?.content, questionStyle),
+                            child: getLatexWidget(questionText, questionStyle),
                           ),
                         ),
                       ],
@@ -110,9 +172,20 @@ class _QuestionWidgetState extends State<QuestionWidget> {
             ),
           ),
         ),
+        if (explanationText.isNotEmpty)
+          IconButton(
+            onPressed: () => setState(() {
+              showExplanation = !showExplanation;
+            }),
+            icon: Icon(
+                showExplanation ? Icons.lightbulb : Icons.lightbulb_outline,
+                color: Colors.orange,
+                size: 20),
+            tooltip: 'Show Explanation',
+          ),
         IconButton(
-          onPressed: () => copyText(widget.question.body!.content.toString()),
-          icon: const Icon(Icons.copy, color: Colors.grey),
+          onPressed: () => copyText(questionText),
+          icon: const Icon(Icons.copy, color: Colors.grey, size: 20),
           tooltip: 'Copy Question',
         ),
       ],

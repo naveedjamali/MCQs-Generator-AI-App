@@ -1,12 +1,18 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mcqs_generator_ai_app/functions/util_functions.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart' as sf;
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 import '../models.dart';
 
@@ -18,43 +24,50 @@ class AppController extends GetxController {
   RxString topicID = 'Computer System'.obs;
   RxString subject = 'Computer Studies'.obs;
 
-  RxString csvInstructions = '''
-MOST IMPORTANT: Generate MCQs from the given text only, and don't add mcqs from out of given text.
-Generate clear and concise MCQs in the csv format.
+  RxString selectedLanguage = "English".obs;
+  RxString selectedDifficulty = "Medium".obs;
+
+  static const String defaultCsvInstructions = '''
+MOST IMPORTANT: Generate MCQs from the given text only. 
+DO NOT include any header row, introductory text, or conclusion.
+Output ONLY the CSV data.
+Language: {language}
+Difficulty Level: {difficulty}
+Generate clear and concise {count} MCQs in the csv format.
 use three commas ',,,' as delimiter.
 reconfirm that CSV values are separated with three consecutive commas ,,, .
-Question text should NOT refer to the 'text' or 'essay' or 'passage'. For example: What is the primary 'focus' or 'main idea' or 'conclusion' of this essay or text or passage?
-Question text should NOT refer to the 'text' or 'essay' or 'passage'. For example: What is the average life of human according to text OR According to the text what is the average life of human.
+Question text should NOT refer to the 'text' or 'essay' or 'passage'.
 Each question should be self-contained and understandable without requiring prior access to the text.
-DO NOT INCLUDE markup tags in the questions and answers e.g. <sub>, <sup> etc.
-CSV output format: Question ,,, Option1 ,,, Option2 ,,, Option3 ,,, Option4 ,,, CorrectAnswer.
-Minimum four answer options for every question.
-Exactly one correct option for every question.
-Exactly three incorrect options for every question.
-Example correct output: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, Islamabad.
-Example incorrect output: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, C.
-Example incorrect output with two commas as delimiter: What is the capital of Pakistan ,, Hyderabad ,, Karachi ,, Islamabad ,, Peshawar ,, Islamabad.
-Recheck output with ,,, only, output SHOULD NOT CONTAIN ,, or , , or ,,,, or , , , types of delimiters.
-'''
-      .obs;
+DO NOT INCLUDE markup tags like <sub>, <sup> etc.
+CSV output format (7 COLUMNS MANDATORY): Question ,,, Option1 ,,, Option2 ,,, Option3 ,,, Option4 ,,, CorrectAnswer ,,, Explanation
+IMPORTANT: The 7th column MUST start with the tag '[[EXPL]]' followed by a brief explanation of why the correct answer is right.
+Example output line: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,,, Islamabad ,,, Peshawar ,,, Islamabad ,,, [[EXPL]] Islamabad is the capital of Pakistan.
+Ensure EVERY line has exactly 6 delimiters (seven columns).
+''';
 
-  RxString essayInstructions = '''
+  static const String defaultEssayInstructions = '''
+Subject: {subject}
+Topic: {topic}
 Generate a detailed essay on the given topic.
 essay length: 2000 words minimum.
 essay type: in-depth.
 The Essay includes: history, actions, reactions, parts, sub-parts, examples, formulas, measurements, structure, importance, inventions, discoveries, scientists, artists, uses, involvements, dates, types, subtypes, etc.
-'''
-      .obs;
+''';
+
+  RxString csvInstructions = defaultCsvInstructions.obs;
+  RxString essayInstructions = defaultEssayInstructions.obs;
 
   final isSearchMode = false.obs;
   final isCovertCSVMode = false.obs;
   final useAiToGenerateEssay = true.obs;
   final isManualEssayMode = false.obs;
+  final isPdfMode = false.obs;
   final isAscendingOrder = true.obs;
   final searchBoxEnabled = false.obs;
 
   final showAnswers = false.obs;
   final generatingResponse = false.obs;
+  final loadingMessage = "Processing...".obs;
 
   final isFilteringFourAnswers = false.obs;
   final showSearchField = false.obs;
@@ -70,6 +83,8 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
   RxList<String> essays = <String>[].obs;
 
   late TextEditingController inputController;
+  late TextEditingController pdfPagesController;
+  late TextEditingController pdfInstructionsController;
   late FocusNode inputFocusNode;
 
   late TextEditingController topicController;
@@ -93,6 +108,8 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
       text: 'Computer Studies',
     );
     searchController = TextEditingController(text: '');
+    pdfPagesController = TextEditingController(text: '');
+    pdfInstructionsController = TextEditingController(text: '');
     itemScrollController = ItemScrollController();
     inputController = TextEditingController(
         text: isCovertCSVMode.value
@@ -135,6 +152,15 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
     essayInstructions.value = instructions;
     update();
     return saved;
+  }
+
+  void resetInstructions() async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    await sp.remove("CSV_INSTRUCTIONS");
+    await sp.remove("ESSAY_INSTRUCTIONS");
+    csvInstructions.value = defaultCsvInstructions;
+    essayInstructions.value = defaultEssayInstructions;
+    update();
   }
 
   Future<void> readModelFromStorage() async {
@@ -200,60 +226,61 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
         .map((s) => s.split(delimiter))
         .toList();
 
-    // const csvConverter = CsvToListConverter();
-    //csvConverter;
     for (List<dynamic> row in rows) {
-      if (row.length < 3) {
-        // Invalid question
+      if (row.length < 6) continue; // Minimum 6 columns required
+
+      // Skip header rows or example rows that the AI sometimes includes
+      String firstCol = row[0].toString().trim().toLowerCase();
+      if (firstCol == "question" ||
+          firstCol.startsWith("example") ||
+          firstCol.contains("option1")) {
         continue;
       }
-      //Create question
-      Question q = Question();
 
-      Body qBody = Body(
-          contentType: 'PLAIN', content: UtilFunctions.removeCommas(row[0]));
+      Question q = Question();
+      String questionText = UtilFunctions.removeCommas(row[0].toString());
+
+      // Try to find explanation in the 7th column or beyond
+      String? explanation;
+      if (row.length >= 7) {
+        explanation = UtilFunctions.removeCommas(row[6].toString().trim());
+      }
+
+      if (explanation != null && explanation.isNotEmpty) {
+        if (!explanation.contains('[[EXPL]]')) {
+          explanation = '[[EXPL]] $explanation';
+        }
+        questionText += "\n\n$explanation";
+      }
+
+      Body qBody = Body(contentType: 'PLAIN', content: questionText);
       q.body = qBody;
       checkBodyForKatex(qBody);
-
       q.answerOptions = [];
 
-      for (int i = 1; i < row.length; i++) {
-        // create answer option.
+      // Correct answer check (column 5)
+      String correctVal = UtilFunctions.removeCommas(row[5].toString().trim());
 
+      // Answer options are columns 1 to 4
+      for (int i = 1; i <= 4; i++) {
+        if (i >= row.length) break;
+
+        String optionText =
+            UtilFunctions.removeCommas(row[i].toString().trim());
         AnswerOptions answer = AnswerOptions(
-            body: Body(
-                content: UtilFunctions.removeCommas(row[i].toString().trim()),
-                contentType: 'PLAIN'),
-            // isCorrect: row[i] == row[row.length - 1]);
-            isCorrect: false);
-
-        // check if the answer is already added.
-
+          body: Body(content: optionText, contentType: 'PLAIN'),
+          isCorrect: optionText == correctVal,
+        );
         checkBodyForKatex(answer.body);
-
-        if (containsAnswer(q.answerOptions ?? [], answer.body!.content)) {
-          for (int i = 0; i < q.answerOptions!.length; i++) {
-            if (q.answerOptions?[i].body?.content == answer.body?.content) {
-              q.answerOptions?[i].isCorrect = true;
-              break;
-            }
-          }
-        } else {
-          q.answerOptions?.add(answer);
-        }
+        q.answerOptions?.add(answer);
       }
 
-      //check that at least one answer is correct in the question.
-      bool containCorrectAnswer = false;
-      q.answerOptions?.forEach(
-        (element) {
-          if (element.isCorrect ?? false) {
-            containCorrectAnswer = true;
-          }
-        },
-      );
-      if (!containCorrectAnswer) {
-        continue;
+      // Ensure at least one correct answer if AI provided a valid one
+      bool hasCorrect =
+          q.answerOptions?.any((a) => a.isCorrect ?? false) ?? false;
+      if (!hasCorrect && q.answerOptions!.isNotEmpty) {
+        // Fallback: if none matched exactly, it might be a formatting issue.
+        // We'll leave it as is for manual correction, or continue.
       }
 
       q.subjectId = subject.value;
@@ -262,7 +289,6 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
       q.status = 'ACTIVE';
 
       shuffleAnswers(q.answerOptions);
-
       temp.add(q);
     }
 
@@ -367,8 +393,13 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
     update();
   }
 
-  void setGeneratingResponse(bool value) {
+  void setGeneratingResponse(bool value, {String? message}) {
     generatingResponse.value = value;
+    if (value && message != null) {
+      loadingMessage.value = message;
+    } else if (!value) {
+      loadingMessage.value = "Processing...";
+    }
     update();
   }
 
@@ -422,8 +453,10 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
 
   Future<String?> getCsvResponse(String description) async {
     String count = useAiToGenerateEssay.value ? '30' : 'minimum 60';
-    String finalInstructions =
-        csvInstructions.value.replaceAll('{count}', count);
+    String finalInstructions = csvInstructions.value
+        .replaceAll('{count}', count)
+        .replaceAll('{language}', selectedLanguage.value)
+        .replaceAll('{difficulty}', selectedDifficulty.value);
 
     final ins = Content.multi(
       finalInstructions
@@ -432,15 +465,135 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
           .map((s) => TextPart(s.trim()))
           .toList(),
     );
-    String? csv = await askAI(ins, description);
-    return csv;
+    String? csvResultRaw = await askAI(ins, description);
+    return csvResultRaw;
+  }
+
+  Future<void> pickAndExtractFromPdf(BuildContext context) async {
+    try {
+      FilePickerResult? result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+
+      if (result != null) {
+        setGeneratingResponse(true, message: 'Extracting text from PDF...');
+        File file = File(result.files.single.path!);
+        final sf.PdfDocument document =
+            sf.PdfDocument(inputBytes: file.readAsBytesSync());
+
+        String extractedText = "";
+
+        if (pdfPagesController.text.trim().isNotEmpty) {
+          // Try to parse page range like "1-5, 8, 10-12"
+          List<int> pages =
+              _parsePageRange(pdfPagesController.text, document.pages.count);
+          if (pages.isNotEmpty) {
+            extractedText = sf.PdfTextExtractor(document).extractText(
+                startPageIndex: pages.first - 1, endPageIndex: pages.last - 1);
+          } else {
+            extractedText = sf.PdfTextExtractor(document).extractText();
+          }
+        } else {
+          extractedText = sf.PdfTextExtractor(document).extractText();
+        }
+
+        document.dispose();
+
+        if (extractedText.trim().isNotEmpty) {
+          inputController.text = extractedText;
+          Get.snackbar('Success',
+              'Extracted ${extractedText.length} characters from PDF',
+              backgroundColor: Colors.green.withAlpha(100));
+        } else {
+          throw 'No text could be extracted from this PDF. It might be a scanned document (try Image OCR mode instead).';
+        }
+      }
+    } catch (e) {
+      Get.snackbar('Extraction Error', '$e',
+          backgroundColor: Colors.red.withAlpha(100),
+          duration: const Duration(seconds: 5));
+    } finally {
+      setGeneratingResponse(false);
+    }
+  }
+
+  List<int> _parsePageRange(String input, int maxPages) {
+    List<int> pages = [];
+    try {
+      final parts = input.split(RegExp(r'[,\s]+'));
+      for (var part in parts) {
+        if (part.contains('-')) {
+          final range = part.split('-');
+          int start = int.parse(range[0]);
+          int end = int.parse(range[1]);
+          for (int i = start; i <= end; i++) {
+            if (i > 0 && i <= maxPages) pages.add(i);
+          }
+        } else {
+          int page = int.parse(part);
+          if (page > 0 && page <= maxPages) pages.add(page);
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print("Page parse error: $e");
+    }
+    pages.sort();
+    return pages.toSet().toList(); // unique sorted pages
+  }
+
+  Future<void> pickAndExtractFromImage(BuildContext context) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+      if (image != null) {
+        setGeneratingResponse(true, message: 'Recognizing text from image...');
+        final inputImage = InputImage.fromFilePath(image.path);
+        final textRecognizer =
+            TextRecognizer(script: TextRecognitionScript.latin);
+        final RecognizedText recognizedText =
+            await textRecognizer.processImage(inputImage);
+        await textRecognizer.close();
+
+        if (recognizedText.text.isNotEmpty) {
+          inputController.text = recognizedText.text;
+        } else {
+          throw 'No text recognized in image';
+        }
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to perform OCR: $e',
+          backgroundColor: Colors.red.withAlpha(100));
+    } finally {
+      setGeneratingResponse(false);
+    }
   }
 
   Future<void> getAIDescription(String text, BuildContext context) async {
-    setGeneratingResponse(true);
+    setGeneratingResponse(true, message: 'Generating MCQs with Gemini AI...');
     try {
-      if (isManualEssayMode.value || !useAiToGenerateEssay.value) {
-        String? csvResponse = await getCsvResponse(text);
+      if (isPdfMode.value ||
+          isManualEssayMode.value ||
+          !useAiToGenerateEssay.value) {
+        String fullPrompt = text;
+
+        if (isPdfMode.value) {
+          // Wrap text with PDF specific context if provided
+          String pdfContext =
+              "SOURCE MATERIAL (Extracted from PDF):\n$text\n\n";
+          if (pdfInstructionsController.text.trim().isNotEmpty) {
+            pdfContext +=
+                "SPECIFIC INSTRUCTIONS: Focus on the following topic/chapter details: ${pdfInstructionsController.text}\n";
+          }
+          if (pdfPagesController.text.trim().isNotEmpty) {
+            pdfContext +=
+                "TARGET SCOPE: This content is from pages ${pdfPagesController.text} of the document.\n";
+          }
+          fullPrompt = pdfContext;
+        }
+
+        String? csvResponse = await getCsvResponse(fullPrompt);
         if (csvResponse != null) {
           if (context.mounted) {
             setCSV(csvResponse);

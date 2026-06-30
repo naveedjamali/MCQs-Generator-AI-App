@@ -10,7 +10,6 @@ import 'package:mcqs_generator_ai_app/get_controllers/home_controller.dart';
 import 'package:mcqs_generator_ai_app/models.dart';
 import 'package:mcqs_generator_ai_app/widgets/ai_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/app_drawer.dart';
-import 'package:mcqs_generator_ai_app/widgets/output_text_label_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/questions_count_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/questions_list_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/shuffle_questions_widget.dart';
@@ -66,9 +65,29 @@ class Homepage extends StatelessWidget {
                     controller.setSearchMode(value.isNotEmpty);
                   },
                 )
-              : const Text(
-                  "MCQs Generator AI",
-                  style: TextStyle(color: Colors.white),
+              : Row(
+                  children: [
+                    const Text(
+                      "MCQs Gen",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${controller.questions.length}',
+                        style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                 )),
           actions: [
             Obx(() => IconButton(
@@ -90,23 +109,16 @@ class Homepage extends StatelessWidget {
             GeneratingQuestionsProgressIndicator(),
           ],
         ),
-        body: Column(
+        body: Stack(
           children: [
-            // Controls
-            Material(
-              elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        const OutputTextLabelWidget(),
-                        const Spacer(),
-                        QuestionsCountWidget(),
-                      ],
-                    ),
-                    SingleChildScrollView(
+            Column(
+              children: [
+                // Controls
+                Material(
+                  elevation: 1,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
                         children: [
@@ -119,29 +131,65 @@ class Homepage extends StatelessWidget {
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            // Questions List
-            Expanded(
-              child: QuestionsListWidget(),
-            ),
-            // Prompt Input at the bottom
-            Container(
-              padding: const EdgeInsets.all(8.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, -2),
                   ),
-                ],
-              ),
-              child: AiWidget(),
+                ),
+                // Questions List
+                Expanded(
+                  child: QuestionsListWidget(),
+                ),
+                // Prompt Input at the bottom
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, -2),
+                      ),
+                    ],
+                  ),
+                  child: AiWidget(),
+                ),
+              ],
             ),
+            Obx(() => controller.generatingResponse.value
+                ? Container(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    child: Center(
+                      child: Card(
+                        margin: const EdgeInsets.all(32),
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const CircularProgressIndicator(),
+                              const SizedBox(height: 20),
+                              Text(
+                                controller.loadingMessage.value,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Please wait a moment...',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink()),
           ],
         ),
       ),

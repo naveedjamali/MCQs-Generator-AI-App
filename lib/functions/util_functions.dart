@@ -6,6 +6,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:mcqs_generator_ai_app/models.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 ///Contains utility functions
 class UtilFunctions {
@@ -37,7 +40,21 @@ class UtilFunctions {
     String keys = "\n\nKeys of correct Answers\n\n";
 
     for (int i = 0; i < questionsList.length; i++) {
-      String q = "\nQ# ${i + 1}: ${questionsList[i].body?.content.toString()}";
+      String rawContent = questionsList[i].body?.content.toString() ?? '';
+      String questionText = rawContent;
+      String explanationText = '';
+
+      if (rawContent.contains('[[EXPL]]')) {
+        List<String> parts = rawContent.split('[[EXPL]]');
+        questionText = parts[0].trim();
+        explanationText = parts[1].trim();
+      } else if (rawContent.contains('Explanation:')) {
+        List<String> parts = rawContent.split('Explanation:');
+        questionText = parts[0].trim();
+        explanationText = parts[1].trim();
+      }
+
+      String q = "\nQ# ${i + 1}: $questionText";
 
       int totalAnswers = questionsList[i].answerOptions!.length;
       for (int j = 0; j < totalAnswers; j++) {
@@ -45,7 +62,11 @@ class UtilFunctions {
             "\n\t${answerOptions[j]}: ${questionsList[i].answerOptions?[j].body?.content.toString()}";
         if (questionsList[i].answerOptions![j].isCorrect ?? false) {
           int qNum = i + 1;
-          keys += "$qNum: ${answerOptions[j]}, ${qNum % 10 == 0 ? '\n' : ''}";
+          String keyLine = "$qNum: ${answerOptions[j]}";
+          if (explanationText.isNotEmpty) {
+            keyLine += " - $explanationText";
+          }
+          keys += "\n$keyLine";
         }
       }
       mcqs += q;
@@ -192,5 +213,98 @@ class UtilFunctions {
     RegExp regex = RegExp(r'^,+');
     String newString = original.replaceAll(regex, '');
     return newString;
+  }
+
+  static Future<void> exportToPdf(
+      String subject, String topic, List<Question> questionsList) async {
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return [
+            pw.Header(
+              level: 0,
+              child: pw.Text("MCQs: $subject - $topic",
+                  style: pw.TextStyle(
+                      fontSize: 24, fontWeight: pw.FontWeight.bold)),
+            ),
+            pw.SizedBox(height: 20),
+            ...questionsList.asMap().entries.map((entry) {
+              int index = entry.key;
+              Question q = entry.value;
+
+              String rawContent = q.body?.content ?? '';
+              String questionText = rawContent;
+              if (rawContent.contains('[[EXPL]]')) {
+                questionText = rawContent.split('[[EXPL]]')[0].trim();
+              } else if (rawContent.contains('Explanation:')) {
+                questionText = rawContent.split('Explanation:')[0].trim();
+              }
+
+              return pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text("${index + 1}. $questionText",
+                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 5),
+                  ...q.answerOptions!.asMap().entries.map((aEntry) {
+                    int aIndex = aEntry.key;
+                    AnswerOptions a = aEntry.value;
+                    String label = String.fromCharCode(65 + aIndex);
+                    return pw.Padding(
+                      padding: const pw.EdgeInsets.only(left: 20, bottom: 2),
+                      child: pw.Text("$label) ${a.body?.content ?? ''}"),
+                    );
+                  }),
+                  pw.SizedBox(height: 15),
+                ],
+              );
+            }),
+            pw.NewPage(),
+            pw.Header(level: 1, text: "Answer Key & Explanations"),
+            pw.SizedBox(height: 10),
+            ...questionsList.asMap().entries.map((entry) {
+              int index = entry.key;
+              Question q = entry.value;
+
+              String rawContent = q.body?.content ?? '';
+              String explanationText = '';
+              if (rawContent.contains('[[EXPL]]')) {
+                explanationText = rawContent.split('[[EXPL]]')[1].trim();
+              } else if (rawContent.contains('Explanation:')) {
+                explanationText = rawContent.split('Explanation:')[1].trim();
+              }
+
+              int correctIndex =
+                  q.answerOptions!.indexWhere((a) => a.isCorrect ?? false);
+              String correctLabel = correctIndex != -1
+                  ? String.fromCharCode(65 + correctIndex)
+                  : "?";
+
+              return pw.Padding(
+                padding: const pw.EdgeInsets.only(bottom: 8),
+                child: pw.RichText(
+                  text: pw.TextSpan(
+                    children: [
+                      pw.TextSpan(
+                        text: "Q${index + 1}: $correctLabel",
+                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                      ),
+                      if (explanationText.isNotEmpty)
+                        pw.TextSpan(text: " - $explanationText"),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ];
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save());
   }
 }

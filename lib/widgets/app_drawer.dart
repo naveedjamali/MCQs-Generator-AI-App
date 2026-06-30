@@ -102,6 +102,23 @@ class _AppDrawerState extends State<AppDrawer> {
                     },
                   ),
                   _buildDrawerItem(
+                    icon: Icons.picture_as_pdf_outlined,
+                    title: 'Export Print-Ready PDF',
+                    onTap: () async {
+                      widget.controller.setGeneratingResponse(true,
+                          message: 'Generating Print-Ready PDF...');
+                      try {
+                        await UtilFunctions.exportToPdf(
+                            widget.controller.subject.value,
+                            widget.controller.topicID.value,
+                            widget.controller.questions);
+                      } finally {
+                        widget.controller.setGeneratingResponse(false);
+                        Get.back();
+                      }
+                    },
+                  ),
+                  _buildDrawerItem(
                     icon: Icons.copy,
                     title: 'Copy JSON',
                     onTap: () => copyQuestionsAsJSON(context),
@@ -121,6 +138,56 @@ class _AppDrawerState extends State<AppDrawer> {
                   ),
                 ]),
                 const SizedBox(height: 16),
+                _buildSectionTitle('Customization'),
+                _buildModernCard([
+                  Obx(() => _buildDropdownItem<String>(
+                        icon: Icons.language_outlined,
+                        title: 'Target Language',
+                        value: widget.controller.selectedLanguage.value,
+                        items: [
+                          'English',
+                          'Urdu',
+                          'Sindhi',
+                          'Arabic',
+                          'Spanish',
+                          'French'
+                        ],
+                        onChanged: (val) =>
+                            widget.controller.selectedLanguage.value = val!,
+                      )),
+                  Obx(() => _buildDropdownItem<String>(
+                        icon: Icons.speed_outlined,
+                        title: 'Difficulty Level',
+                        value: widget.controller.selectedDifficulty.value,
+                        items: ['Easy', 'Medium', 'Hard'],
+                        onChanged: (val) =>
+                            widget.controller.selectedDifficulty.value = val!,
+                      )),
+                ]),
+                const SizedBox(height: 16),
+                _buildSectionTitle('Content Import'),
+                _buildModernCard([
+                  _buildDrawerItem(
+                    icon: Icons.picture_as_pdf,
+                    title: 'Import from PDF',
+                    onTap: () {
+                      Get.back();
+                      widget.controller.isPdfMode.value = true;
+                      widget.controller.isCovertCSVMode.value = false;
+                      widget.controller.isManualEssayMode.value = false;
+                      widget.controller.pickAndExtractFromPdf(context);
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.camera_alt_outlined,
+                    title: 'Import from Image (OCR)',
+                    onTap: () {
+                      Get.back();
+                      widget.controller.pickAndExtractFromImage(context);
+                    },
+                  ),
+                ]),
+                const SizedBox(height: 16),
                 _buildSectionTitle('Generation Modes'),
                 _buildModernCard([
                   _buildSwitchTile(
@@ -130,6 +197,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       widget.controller.isCovertCSVMode.value = value;
                       if (value) {
                         widget.controller.isManualEssayMode.value = false;
+                        widget.controller.isPdfMode.value = false;
                       }
                     },
                   ),
@@ -140,11 +208,24 @@ class _AppDrawerState extends State<AppDrawer> {
                       widget.controller.isManualEssayMode.value = value;
                       if (value) {
                         widget.controller.isCovertCSVMode.value = false;
+                        widget.controller.isPdfMode.value = false;
+                      }
+                    },
+                  ),
+                  _buildSwitchTile(
+                    'PDF Source Mode',
+                    widget.controller.isPdfMode,
+                    (value) {
+                      widget.controller.isPdfMode.value = value;
+                      if (value) {
+                        widget.controller.isCovertCSVMode.value = false;
+                        widget.controller.isManualEssayMode.value = false;
                       }
                     },
                   ),
                   Obx(() => !widget.controller.isManualEssayMode.value &&
-                          !widget.controller.isCovertCSVMode.value
+                          !widget.controller.isCovertCSVMode.value &&
+                          !widget.controller.isPdfMode.value
                       ? _buildSwitchTile(
                           'AI Write Essay First',
                           widget.controller.useAiToGenerateEssay,
@@ -197,6 +278,17 @@ class _AppDrawerState extends State<AppDrawer> {
                           widget.controller.saveEssayInstructionsToStorage(val),
                     ),
                   ),
+                  _buildDrawerItem(
+                    icon: Icons.restart_alt,
+                    title: 'Reset AI Instructions',
+                    onTap: () {
+                      widget.controller.resetInstructions();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Instructions reset to default')),
+                      );
+                    },
+                  ),
                   const ApiKeyWidget(),
                 ]),
                 const SizedBox(height: 16),
@@ -205,10 +297,15 @@ class _AppDrawerState extends State<AppDrawer> {
                     icon: const Icon(Icons.info_outline),
                     applicationName: 'MCQs Generator AI',
                     applicationVersion: '1.0.5',
-                    applicationIcon: Image.asset(
-                      'assets/images/icon.png',
-                      height: 50,
-                      width: 50,
+                    applicationIcon: CircleAvatar(
+                      radius: 25,
+                      backgroundColor: Colors.white,
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/images/mcqs_generator_ai_app_logo.png',
+                          fit: BoxFit.contain,
+                        ),
+                      ),
                     ),
                     aboutBoxChildren: const [
                       Text(
@@ -253,16 +350,14 @@ class _AppDrawerState extends State<AppDrawer> {
         ),
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              child: Image.asset(
-                'assets/images/icon.png',
-                height: 70,
-                width: 70,
+            CircleAvatar(
+              radius: 42,
+              backgroundColor: Colors.white,
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/mcqs_generator_ai_app_logo.png',
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -355,6 +450,39 @@ class _AppDrawerState extends State<AppDrawer> {
           dense: true,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
         ));
+  }
+
+  Widget _buildDropdownItem<T>({
+    required IconData icon,
+    required String title,
+    required T value,
+    required List<T> items,
+    required ValueChanged<T?> onChanged,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.green.shade700, size: 22),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          DropdownButton<T>(
+            value: value,
+            isExpanded: true,
+            underline: const SizedBox(),
+            style: const TextStyle(
+                fontSize: 14, color: Colors.black, fontWeight: FontWeight.w500),
+            items: items
+                .map((item) => DropdownMenuItem<T>(
+                      value: item,
+                      child: Text(item.toString()),
+                    ))
+                .toList(),
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+      dense: true,
+    );
   }
 
   void _showInstructionsEditDialog(
