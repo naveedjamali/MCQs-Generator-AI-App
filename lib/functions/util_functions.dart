@@ -129,7 +129,9 @@ class UtilFunctions {
       // Convert content to bytes as required by some platforms
       Uint8List bytes = Uint8List.fromList(utf8.encode(content));
 
-      // Use saveFile with bytes parameter as required by modern mobile platforms
+      // We use the 'bytes' parameter in saveFile as it's required for Android stability.
+      // To prevent the "double save" issue, we DO NOT call writeAsBytes manually
+      // after the picker returns. The plugin handles the save automatically.
       String? filePath = await FilePicker.saveFile(
         dialogTitle: 'Save MCQs',
         fileName: fullFileName,
@@ -143,11 +145,18 @@ class UtilFunctions {
         return;
       }
 
-      // Note: On some platforms, saveFile already handles writing if bytes are provided
-      // but we ensure it's written if filePath is returned and differs from expected behavior
+      // If the picker returned a path but for some reason the file wasn't created
+      // (can happen on some desktop platforms if bytes are provided), we write it.
+      // On Android, it will already exist and we skip this.
       final file = File(filePath);
       if (!(await file.exists()) || (await file.length()) == 0) {
-        await file.writeAsBytes(bytes);
+        // Before writing, ensure extension is correct if we are forced to write manually
+        if (!filePath.toLowerCase().endsWith('.$extension')) {
+          filePath = '$filePath.$extension';
+          await File(filePath).writeAsBytes(bytes);
+        } else {
+          await file.writeAsBytes(bytes);
+        }
       }
 
       if (context != null && context.mounted) {
@@ -173,7 +182,7 @@ class UtilFunctions {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: SelectableText(
-                      filePath,
+                      filePath!,
                       style:
                           const TextStyle(fontSize: 12, color: Colors.blueGrey),
                     ),

@@ -138,6 +138,8 @@ class _QuestionWidgetState extends State<QuestionWidget> {
   }
 
   Widget _buildHeader(bool plainText, String questionText) {
+    final isWideScreen = MediaQuery.of(context).size.width > 600;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -176,6 +178,12 @@ class _QuestionWidgetState extends State<QuestionWidget> {
           icon: const Icon(Icons.copy, color: Colors.grey, size: 20),
           tooltip: 'Copy Question',
         ),
+        if (isWideScreen)
+          IconButton(
+            onPressed: () => widget.deleteQuestion(widget.index),
+            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+            tooltip: 'Delete Question',
+          ),
       ],
     );
   }
