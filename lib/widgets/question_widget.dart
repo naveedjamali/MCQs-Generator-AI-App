@@ -23,7 +23,6 @@ class QuestionWidget extends StatefulWidget {
 
 class _QuestionWidgetState extends State<QuestionWidget> {
   bool showAnswers = false;
-  bool showExplanation = false;
   final questionStyle =
       const TextStyle(fontSize: 16, fontWeight: FontWeight.bold);
   final answerStyle = const TextStyle(fontSize: 16);
@@ -88,9 +87,10 @@ class _QuestionWidgetState extends State<QuestionWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(plainText, questionText, explanationText),
+            _buildHeader(plainText, questionText),
             _buildAnswerList(),
-            if (showExplanation && explanationText.isNotEmpty)
+            if ((widget.showAnswers || showAnswers) &&
+                explanationText.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 16.0, vertical: 12.0),
@@ -137,8 +137,7 @@ class _QuestionWidgetState extends State<QuestionWidget> {
     );
   }
 
-  Widget _buildHeader(
-      bool plainText, String questionText, String explanationText) {
+  Widget _buildHeader(bool plainText, String questionText) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -172,17 +171,6 @@ class _QuestionWidgetState extends State<QuestionWidget> {
             ),
           ),
         ),
-        if (explanationText.isNotEmpty)
-          IconButton(
-            onPressed: () => setState(() {
-              showExplanation = !showExplanation;
-            }),
-            icon: Icon(
-                showExplanation ? Icons.lightbulb : Icons.lightbulb_outline,
-                color: Colors.orange,
-                size: 20),
-            tooltip: 'Show Explanation',
-          ),
         IconButton(
           onPressed: () => copyText(questionText),
           icon: const Icon(Icons.copy, color: Colors.grey, size: 20),

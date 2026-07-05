@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -45,6 +44,11 @@ Example output line: What is the capital of Pakistan ,,, Hyderabad ,,, Karachi ,
 Ensure EVERY line has exactly 6 delimiters (seven columns).
 ''';
 
+  static const String defaultSpecialInstructions = '''
+Describe the specific type of MCQs to generate here. 
+E.g., "Generate code-based MCQs for C++ programming. Some questions should ask for the output of a code snippet."
+''';
+
   static const String defaultEssayInstructions = '''
 Subject: {subject}
 Topic: {topic}
@@ -55,6 +59,7 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
 ''';
 
   RxString csvInstructions = defaultCsvInstructions.obs;
+  RxString specialInstructions = defaultSpecialInstructions.obs;
   RxString essayInstructions = defaultEssayInstructions.obs;
 
   final isSearchMode = false.obs;
@@ -134,6 +139,8 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
     SharedPreferences sp = await SharedPreferences.getInstance();
     csvInstructions.value =
         sp.getString("CSV_INSTRUCTIONS") ?? csvInstructions.value;
+    specialInstructions.value =
+        sp.getString("SPECIAL_INSTRUCTIONS") ?? specialInstructions.value;
     essayInstructions.value =
         sp.getString("ESSAY_INSTRUCTIONS") ?? essayInstructions.value;
   }
@@ -142,6 +149,14 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
     SharedPreferences sp = await SharedPreferences.getInstance();
     bool saved = await sp.setString("CSV_INSTRUCTIONS", instructions);
     csvInstructions.value = instructions;
+    update();
+    return saved;
+  }
+
+  Future<bool> saveSpecialInstructionsToStorage(String instructions) async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    bool saved = await sp.setString("SPECIAL_INSTRUCTIONS", instructions);
+    specialInstructions.value = instructions;
     update();
     return saved;
   }
@@ -157,8 +172,10 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
   void resetInstructions() async {
     SharedPreferences sp = await SharedPreferences.getInstance();
     await sp.remove("CSV_INSTRUCTIONS");
+    await sp.remove("SPECIAL_INSTRUCTIONS");
     await sp.remove("ESSAY_INSTRUCTIONS");
     csvInstructions.value = defaultCsvInstructions;
+    specialInstructions.value = defaultSpecialInstructions;
     essayInstructions.value = defaultEssayInstructions;
     update();
   }
@@ -453,7 +470,10 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
 
   Future<String?> getCsvResponse(String description) async {
     String count = useAiToGenerateEssay.value ? '30' : 'minimum 60';
-    String finalInstructions = csvInstructions.value
+    String combinedInstructions =
+        "${csvInstructions.value}\n\nSPECIAL INSTRUCTIONS:\n${specialInstructions.value}";
+
+    String finalInstructions = combinedInstructions
         .replaceAll('{count}', count)
         .replaceAll('{language}', selectedLanguage.value)
         .replaceAll('{difficulty}', selectedDifficulty.value);

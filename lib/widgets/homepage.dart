@@ -10,7 +10,6 @@ import 'package:mcqs_generator_ai_app/get_controllers/home_controller.dart';
 import 'package:mcqs_generator_ai_app/models.dart';
 import 'package:mcqs_generator_ai_app/widgets/ai_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/app_drawer.dart';
-import 'package:mcqs_generator_ai_app/widgets/questions_count_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/questions_list_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/shuffle_questions_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/sort_questions_button_widget.dart';
@@ -245,7 +244,8 @@ class Homepage extends StatelessWidget {
   }
 
   void copyQuestionsAsJSON(BuildContext context) async {
-    final questions = jsonEncode(controller.questions);
+    final questions = UtilFunctions.questionsToJSON(controller.questions,
+        controller.subject.value, controller.topicID.value);
     await Clipboard.setData(ClipboardData(text: questions));
 
     if (context.mounted) {

@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -239,7 +237,6 @@ class _AppDrawerState extends State<AppDrawer> {
                       icon: const Icon(Icons.file_open, size: 20),
                       label: const Text('Load JSON File'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: Colors.green.shade700,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -258,13 +255,24 @@ class _AppDrawerState extends State<AppDrawer> {
                       )),
                   _buildDrawerItem(
                     icon: Icons.description_outlined,
-                    title: 'CSV Instructions',
+                    title: 'General Instructions',
                     onTap: () => _showInstructionsEditDialog(
                       context,
-                      'CSV Instructions',
+                      'General Instructions',
                       widget.controller.csvInstructions.value,
                       (val) =>
                           widget.controller.saveCsvInstructionsToStorage(val),
+                    ),
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.auto_awesome_motion_outlined,
+                    title: 'Special Instructions',
+                    onTap: () => _showInstructionsEditDialog(
+                      context,
+                      'Special Instructions',
+                      widget.controller.specialInstructions.value,
+                      (val) => widget.controller
+                          .saveSpecialInstructionsToStorage(val),
                     ),
                   ),
                   _buildDrawerItem(
@@ -339,20 +347,17 @@ class _AppDrawerState extends State<AppDrawer> {
         width: double.infinity,
         padding: const EdgeInsets.only(top: 60, bottom: 24),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.primary,
-              theme.colorScheme.primary.withValues(alpha: 0.8)
-            ],
+          color: theme.colorScheme.surface,
+          border: Border(
+            bottom: BorderSide(color: Colors.grey.shade200),
           ),
         ),
         child: Column(
           children: [
             CircleAvatar(
               radius: 42,
-              backgroundColor: Colors.white,
+              backgroundColor:
+                  theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
               child: ClipOval(
                 child: Image.asset(
                   'assets/images/mcqs_generator_ai_app_logo.png',
@@ -361,10 +366,10 @@ class _AppDrawerState extends State<AppDrawer> {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'MCQs Generator AI',
               style: TextStyle(
-                color: Colors.white,
+                color: theme.colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
                 fontSize: 20,
                 letterSpacing: 0.5,
@@ -373,7 +378,7 @@ class _AppDrawerState extends State<AppDrawer> {
             Text(
               'Advanced Generation Suite',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
+                color: theme.colorScheme.onSurfaceVariant,
                 fontSize: 13,
               ),
             ),
@@ -384,18 +389,20 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8, bottom: 8, top: 4),
-      child: Text(
-        title.toUpperCase(),
-        style: TextStyle(
-          color: Colors.green.shade800,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-          letterSpacing: 1.2,
+    return Builder(builder: (context) {
+      return Padding(
+        padding: const EdgeInsets.only(left: 8, bottom: 8, top: 4),
+        child: Text(
+          title.toUpperCase(),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+            letterSpacing: 1.2,
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   Widget _buildModernCard(List<Widget> children) {
@@ -405,7 +412,7 @@ class _AppDrawerState extends State<AppDrawer> {
         borderRadius: BorderRadius.circular(15),
         side: BorderSide(color: Colors.grey.shade200),
       ),
-      color: Colors.grey.shade50,
+      color: Colors.white,
       child: Column(
         children: children,
       ),
@@ -418,20 +425,23 @@ class _AppDrawerState extends State<AppDrawer> {
     String? subtitle,
     required VoidCallback onTap,
   }) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.green.shade700, size: 22),
-      title: Text(
-        title,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-      ),
-      subtitle: subtitle != null
-          ? Text(subtitle, style: const TextStyle(fontSize: 12))
-          : null,
-      trailing: const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
-      onTap: onTap,
-      dense: true,
-      visualDensity: VisualDensity.compact,
-    );
+    return Builder(builder: (context) {
+      return ListTile(
+        leading:
+            Icon(icon, color: Theme.of(context).colorScheme.primary, size: 22),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        ),
+        subtitle: subtitle != null
+            ? Text(subtitle, style: const TextStyle(fontSize: 12))
+            : null,
+        trailing: const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
+        onTap: onTap,
+        dense: true,
+        visualDensity: VisualDensity.compact,
+      );
+    });
   }
 
   Widget _buildSwitchTile(
@@ -439,17 +449,19 @@ class _AppDrawerState extends State<AppDrawer> {
     RxBool value,
     Function(bool) onChanged,
   ) {
-    return Obx(() => SwitchListTile.adaptive(
-          title: Text(
-            title,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          ),
-          value: value.value,
-          onChanged: onChanged,
-          activeTrackColor: Colors.green.shade700,
-          dense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-        ));
+    return Builder(builder: (context) {
+      return Obx(() => SwitchListTile.adaptive(
+            title: Text(
+              title,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+            value: value.value,
+            onChanged: onChanged,
+            activeTrackColor: Theme.of(context).colorScheme.primary,
+            dense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          ));
+    });
   }
 
   Widget _buildDropdownItem<T>({
@@ -573,7 +585,8 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   void copyQuestionsAsJSON(BuildContext context) async {
-    final questions = jsonEncode(widget.controller.questions);
+    final questions = UtilFunctions.questionsToJSON(widget.controller.questions,
+        widget.controller.subject.value, widget.controller.topicID.value);
     await Clipboard.setData(ClipboardData(text: questions));
 
     if (context.mounted) {

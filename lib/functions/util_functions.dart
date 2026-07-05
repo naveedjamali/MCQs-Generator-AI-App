@@ -76,6 +76,28 @@ class UtilFunctions {
     return allText;
   }
 
+  /// Converts the question list to a JSON string, stripping out explanations if requested.
+  static String questionsToJSON(
+      List<Question> questionsList, String subject, String topic) {
+    List<Map<String, dynamic>> jsonList = questionsList.map((q) {
+      Map<String, dynamic> qMap = q.toJson();
+
+      // Strip explanation from the JSON output for external compatibility
+      String bodyContent = qMap['body']?['content'] ?? '';
+      if (bodyContent.contains('[[EXPL]]')) {
+        qMap['body']['content'] = bodyContent.split('[[EXPL]]')[0].trim();
+      } else if (bodyContent.contains('Explanation:')) {
+        qMap['body']['content'] = bodyContent.split('Explanation:')[0].trim();
+      }
+
+      qMap['topicId'] = topic;
+      qMap['subjectId'] = subject;
+      return qMap;
+    }).toList();
+
+    return jsonEncode(jsonList);
+  }
+
   ///Saves the mcqs in a file on local storage
   ///[subject] of mcqs,
   ///[topic] of mcqs,
@@ -98,11 +120,7 @@ class UtilFunctions {
     // Get output content
     String content;
     if (saveAsJSON) {
-      for (Question q in questionsList) {
-        q.topicId = topic;
-        q.subjectId = subject;
-      }
-      content = jsonEncode(questionsList);
+      content = questionsToJSON(questionsList, subject, topic);
     } else {
       content = questionToText(subject, topic, questionsList);
     }
