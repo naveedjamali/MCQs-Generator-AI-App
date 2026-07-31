@@ -200,6 +200,12 @@ class _AppDrawerState extends State<AppDrawer> {
                     },
                   ),
                   _buildSwitchTile(
+                    'KaTeX Conversion',
+                    widget.controller.useKatexConversion,
+                    (value) =>
+                        widget.controller.useKatexConversion.value = value,
+                  ),
+                  _buildSwitchTile(
                     'Manual Essay Mode',
                     widget.controller.isManualEssayMode,
                     (value) {

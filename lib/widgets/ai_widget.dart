@@ -120,30 +120,44 @@ class AiWidget extends StatelessWidget {
             )),
         const SizedBox(height: 8),
         Row(
-          mainAxisAlignment: MainAxisAlignment.end,
           children: [
             if (!controller.isCovertCSVMode.value &&
-                !controller.isPdfMode.value)
+                !controller.isPdfMode.value) ...[
+              IconButton(
+                onPressed: () => _showHistoryMenu(context),
+                icon: const Icon(Icons.history, color: Colors.blueGrey),
+                tooltip: 'History & Re-generate',
+              ),
+              IconButton(
+                onPressed: () => _handleSubmission(context, redo: true),
+                icon: const Icon(Icons.replay_outlined, color: Colors.blue),
+                tooltip: 'Redo last session',
+              ),
               IconButton(
                 onPressed: () => controller.pickAndExtractFromImage(context),
                 icon: const Icon(Icons.camera_alt_outlined,
                     color: Colors.blueGrey),
                 tooltip: 'Extract from Image (OCR)',
               ),
+            ],
             const Spacer(),
-            TextButton.icon(
+            TextButton(
               onPressed: () => controller.clearEntries(),
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
-              label: const Text('Clear'),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Clear'),
             ),
-            const SizedBox(width: 8),
-            ElevatedButton.icon(
-              onPressed: () => _handleSubmission(context),
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('Generate MCQs'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            const SizedBox(width: 4),
+            Expanded(
+              flex: 4,
+              child: ElevatedButton.icon(
+                onPressed: () => _handleSubmission(context),
+                icon: const Icon(Icons.auto_awesome, size: 18),
+                label: const Text('Generate', overflow: TextOverflow.ellipsis),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
               ),
             ),
           ],
@@ -152,23 +166,77 @@ class AiWidget extends StatelessWidget {
     );
   }
 
-  void _handleSubmission(BuildContext context) async {
-    if (controller.inputController.text.isEmpty) {
+  void _showHistoryMenu(BuildContext context) {
+    final history = controller.entries;
+    if (history.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No generation history yet')),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ListTile(
+            title: Text('Select History to Re-generate',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          const Divider(),
+          Expanded(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: history.length,
+              itemBuilder: (context, index) => ListTile(
+                leading: const Icon(Icons.history),
+                title: Text(history[index],
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                onTap: () {
+                  Navigator.pop(context);
+                  controller.inputController.text = history[index];
+                  _handleSubmission(context);
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleSubmission(BuildContext context, {bool redo = false}) async {
+    final isSmallScreen = MediaQuery.of(context).size.width <= 600;
+    String text = controller.inputController.text;
+    if (redo) {
+      if (controller.entries.isNotEmpty) {
+        text = controller.entries.first;
+        controller.inputController.text = text;
+      } else if (controller.essays.isNotEmpty) {
+        text = controller.essays.first;
+        controller.inputController.text = text;
+      }
+    }
+
+    if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter text first')),
       );
       return;
     }
 
+    if (isSmallScreen) {
+      Navigator.pop(context); // Close the dialog on mobile
+    }
+
     if (controller.isCovertCSVMode.value) {
-      String text = controller.inputController.text;
       controller.addEntry(text);
       controller.setCSV(text);
       controller.addQuestions(context);
       controller.inputController.clear();
       controller.inputFocusNode.requestFocus();
     } else {
-      String text = controller.inputController.text;
       controller.addEntry(text);
 
       try {

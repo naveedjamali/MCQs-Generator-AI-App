@@ -54,6 +54,8 @@ class _QuestionWidgetState extends State<QuestionWidget> {
 
     bool plainText =
         widget.question.body?.contentType?.toLowerCase() == "plain";
+    final isKatex = widget.question.body?.contentType == "KATEX";
+    final isSmallScreen = MediaQuery.of(context).size.width <= 600;
 
     return Dismissible(
       key: Key(
@@ -82,113 +84,237 @@ class _QuestionWidgetState extends State<QuestionWidget> {
         padding: const EdgeInsets.only(right: 20.0),
         child: const Icon(Icons.delete, color: Colors.white),
       ),
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(plainText, questionText),
-            _buildAnswerList(),
-            if ((widget.showAnswers || showAnswers) &&
-                explanationText.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0, vertical: 12.0),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blueGrey.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.blueGrey.shade100),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.auto_awesome,
-                              size: 16, color: Colors.blueGrey.shade700),
-                          const SizedBox(width: 8),
-                          Text('AI EXPLANATION',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 11,
-                                  letterSpacing: 1.1,
-                                  color: Colors.blueGrey.shade700)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        explanationText,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.blueGrey.shade900,
-                          height: 1.4,
+      child: InkWell(
+        onTap: () => setState(() {
+          showAnswers = !showAnswers;
+        }),
+        onLongPress: isSmallScreen
+            ? () => _showQuestionContextMenu(context, questionText)
+            : null,
+        child: Card(
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(plainText, questionText, isSmallScreen),
+              _buildAnswerList(isSmallScreen),
+              if ((widget.showAnswers || showAnswers) &&
+                  explanationText.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 12.0),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blueGrey.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.blueGrey.shade100),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.auto_awesome,
+                                size: 16, color: Colors.blueGrey.shade700),
+                            const SizedBox(width: 8),
+                            Text('AI EXPLANATION',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11,
+                                    letterSpacing: 1.1,
+                                    color: Colors.blueGrey.shade700)),
+                          ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 8),
+                        !isKatex
+                            ? Text(
+                                explanationText,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.blueGrey.shade900,
+                                  height: 1.4,
+                                ),
+                              )
+                            : getLatexWidget(
+                                explanationText,
+                                TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.blueGrey.shade900,
+                                  height: 1.4,
+                                ),
+                              ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(bool plainText, String questionText) {
-    final isWideScreen = MediaQuery.of(context).size.width > 600;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Padding(
-            padding:
-                const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-            child: GestureDetector(
-              onTap: () => setState(() {
-                showAnswers = !showAnswers;
-              }),
-              child: plainText
-                  ? Text(
-                      '${widget.index + 1}: $questionText',
-                      style: questionStyle,
-                    )
-                  : Row(
-                      children: [
-                        Text(
-                          '${widget.index + 1}: ',
-                          style: questionStyle,
-                        ),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: getLatexWidget(questionText, questionStyle),
-                          ),
-                        ),
-                      ],
-                    ),
+  void _showQuestionContextMenu(BuildContext context, String questionText) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ListTile(
+            title: Text('Question Actions',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.copy),
+            title: const Text('Copy Question'),
+            onTap: () {
+              Navigator.pop(context);
+              copyText(questionText);
+            },
+          ),
+          if (widget.question.rawCsv != null)
+            ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: const Text('Copy RAW CSV'),
+              onTap: () {
+                Navigator.pop(context);
+                copyText(widget.question.rawCsv!);
+              },
             ),
+          ListTile(
+            leading: const Icon(Icons.edit),
+            title: const Text('Edit Question'),
+            onTap: () {
+              Navigator.pop(context);
+              editQuestion();
+            },
           ),
-        ),
-        IconButton(
-          onPressed: () => copyText(questionText),
-          icon: const Icon(Icons.copy, color: Colors.grey, size: 20),
-          tooltip: 'Copy Question',
-        ),
-        if (isWideScreen)
-          IconButton(
-            onPressed: () => widget.deleteQuestion(widget.index),
-            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-            tooltip: 'Delete Question',
+          StatefulBuilder(builder: (context, setMenuState) {
+            final isKatex = widget.question.body?.contentType == "KATEX";
+            return SwitchListTile(
+              secondary: const Icon(Icons.functions),
+              title: const Text('KATEX Mode'),
+              value: isKatex,
+              onChanged: (value) {
+                setState(() {
+                  final newType = value ? "KATEX" : "PLAIN";
+                  widget.question.body?.contentType = newType;
+                  for (var opt in widget.question.answerOptions ?? []) {
+                    opt.body?.contentType = newType;
+                  }
+                });
+                setMenuState(() {});
+              },
+            );
+          }),
+          ListTile(
+            leading: const Icon(Icons.delete, color: Colors.red),
+            title: const Text('Delete Question',
+                style: TextStyle(color: Colors.red)),
+            onTap: () {
+              Navigator.pop(context);
+              widget.deleteQuestion(widget.index);
+            },
           ),
-      ],
+          const SizedBox(height: 12),
+        ],
+      ),
     );
   }
 
-  Widget _buildAnswerList() {
+  Widget _buildHeader(bool plainText, String questionText, bool isSmallScreen) {
+    final isWideScreen = MediaQuery.of(context).size.width > 600;
+    final isKatex = widget.question.body?.contentType == "KATEX";
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: !isKatex
+                ? Text(
+                    '${widget.index + 1}: $questionText',
+                    style: questionStyle,
+                    softWrap: true,
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${widget.index + 1}: ',
+                        style: questionStyle,
+                      ),
+                      Expanded(
+                        child: getLatexWidget(questionText, questionStyle),
+                      ),
+                    ],
+                  ),
+          ),
+          if (!isSmallScreen) ...[
+            // PLAIN/KATEX Toggle
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isKatex ? 'KATEX' : 'PLAIN',
+                  style:
+                      const TextStyle(fontSize: 8, fontWeight: FontWeight.bold),
+                ),
+                Transform.scale(
+                  scale: 0.7,
+                  child: Switch(
+                    value: isKatex,
+                    onChanged: (value) {
+                      setState(() {
+                        final newType = value ? "KATEX" : "PLAIN";
+                        widget.question.body?.contentType = newType;
+                        // Also update all answers for consistency
+                        for (var opt in widget.question.answerOptions ?? []) {
+                          opt.body?.contentType = newType;
+                        }
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+            IconButton(
+              onPressed: () => copyText(questionText),
+              icon: const Icon(Icons.copy, color: Colors.grey, size: 20),
+              tooltip: 'Copy Question',
+            ),
+            if (widget.question.rawCsv != null)
+              IconButton(
+                onPressed: () => copyText(widget.question.rawCsv!),
+                icon: const Icon(Icons.receipt_long_outlined,
+                    color: Colors.blueGrey, size: 20),
+                tooltip: 'Copy RAW CSV',
+              ),
+            if (isWideScreen)
+              IconButton(
+                onPressed: () => widget.deleteQuestion(widget.index),
+                icon: const Icon(Icons.delete_outline,
+                    color: Colors.red, size: 20),
+                tooltip: 'Delete Question',
+              ),
+          ] else
+            InkWell(
+              onTap: () => _showQuestionContextMenu(context, questionText),
+              child: const Padding(
+                padding: EdgeInsets.only(left: 8.0, top: 4.0),
+                child: Icon(Icons.more_vert, size: 20, color: Colors.grey),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnswerList(bool isSmallScreen) {
     return widget.showAnswers || showAnswers
         ? ReorderableListView.builder(
             itemCount: widget.question.answerOptions!.length + 1,
@@ -199,7 +325,7 @@ class _QuestionWidgetState extends State<QuestionWidget> {
               bool isAnswer = index < widget.question.answerOptions!.length;
 
               return isAnswer
-                  ? _buildAnswerOption(index)
+                  ? _buildAnswerOption(index, isSmallScreen)
                   : _buildAddNewAnswer(index);
             },
             onReorder: (int oldIndex, int newIndex) {
@@ -213,66 +339,148 @@ class _QuestionWidgetState extends State<QuestionWidget> {
         : Container();
   }
 
-  Widget _buildAnswerOption(int index) {
-    return Row(
+  Widget _buildAnswerOption(int index, bool isSmallScreen) {
+    final isKatex =
+        widget.question.answerOptions?[index].body?.contentType == "KATEX";
+    final answerText =
+        widget.question.answerOptions?[index].body?.content ?? '';
+
+    return InkWell(
       key: ValueKey(index),
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 44),
-                child: Checkbox(
-                  value:
-                      widget.question.answerOptions?[index].isCorrect ?? false,
-                  onChanged: (value) {
-                    setState(() {
-                      widget.question.answerOptions?[index].isCorrect = value;
-                    });
-                  },
+      onLongPress: isSmallScreen
+          ? () => _showAnswerContextMenu(context, index, answerText)
+          : null,
+      child: Row(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: isSmallScreen ? 8 : 44),
+                  child: Checkbox(
+                    value: widget.question.answerOptions?[index].isCorrect ??
+                        false,
+                    onChanged: (value) {
+                      setState(() {
+                        widget.question.answerOptions?[index].isCorrect = value;
+                      });
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                  child: (widget
-                              .question.answerOptions?[index].body?.contentType
-                              ?.toLowerCase() ==
-                          'plain')
+                const SizedBox(width: 8),
+                Expanded(
+                  child: !isKatex
                       ? GestureDetector(
-                          onTap: () => copyText(widget.question
-                                  .answerOptions?[index].body?.content ??
-                              ''),
+                          onTap: () => copyText(answerText),
                           child: Text(
-                            widget.question.answerOptions?[index].body
-                                    ?.content ??
-                                '',
+                            answerText,
                             style: const TextStyle(fontSize: 16),
+                            softWrap: true,
                           ))
                       : GestureDetector(
-                          onTap: () => copyText(widget.question
-                                  .answerOptions?[index].body?.content ??
-                              ''),
+                          onTap: () => copyText(answerText),
                           child: getLatexWidget(
-                            widget.question.answerOptions?[index].body?.content,
+                            answerText,
                             const TextStyle(
                               fontSize: 16,
                             ),
                           ),
-                        )),
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    widget.question.answerOptions?.removeAt(index);
-                  });
-                },
-                icon:
-                    const Icon(Icons.remove_circle_outline, color: Colors.red),
-              ),
-            ],
+                        ),
+                ),
+                if (!isSmallScreen) ...[
+                  // Individual Answer KaTeX Switch
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        isKatex ? 'KATEX' : 'PLAIN',
+                        style: const TextStyle(
+                            fontSize: 6, fontWeight: FontWeight.bold),
+                      ),
+                      Transform.scale(
+                        scale: 0.5,
+                        child: Switch(
+                          value: isKatex,
+                          onChanged: (value) {
+                            setState(() {
+                              widget.question.answerOptions?[index].body
+                                  ?.contentType = value ? "KATEX" : "PLAIN";
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        widget.question.answerOptions?.removeAt(index);
+                      });
+                    },
+                    icon: const Icon(Icons.remove_circle_outline,
+                        color: Colors.red),
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(width: 40, height: 40),
-      ],
+          const SizedBox(width: 48, height: 48),
+        ],
+      ),
+    );
+  }
+
+  void _showAnswerContextMenu(
+      BuildContext context, int index, String answerText) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ListTile(
+            title: Text('Answer Actions',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.copy),
+            title: const Text('Copy Answer'),
+            onTap: () {
+              Navigator.pop(context);
+              copyText(answerText);
+            },
+          ),
+          StatefulBuilder(builder: (context, setMenuState) {
+            final isKatex =
+                widget.question.answerOptions?[index].body?.contentType ==
+                    "KATEX";
+            return SwitchListTile(
+              secondary: const Icon(Icons.functions),
+              title: const Text('KATEX Mode'),
+              value: isKatex,
+              onChanged: (value) {
+                setState(() {
+                  widget.question.answerOptions?[index].body?.contentType =
+                      value ? "KATEX" : "PLAIN";
+                });
+                setMenuState(() {});
+              },
+            );
+          }),
+          ListTile(
+            leading: const Icon(Icons.delete, color: Colors.red),
+            title: const Text('Remove Answer',
+                style: TextStyle(color: Colors.red)),
+            onTap: () {
+              Navigator.pop(context);
+              setState(() {
+                widget.question.answerOptions?.removeAt(index);
+              });
+            },
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
     );
   }
 
@@ -307,8 +515,33 @@ class _QuestionWidgetState extends State<QuestionWidget> {
   }
 
   Widget getLatexWidget(String? text, TextStyle textStyle) {
+    if (text == null || text.isEmpty) return const SizedBox.shrink();
+
+    final isSmallScreen = MediaQuery.of(context).size.width <= 600;
+
+    if (isSmallScreen) {
+      // Split by spaces or LaTeX line breaks to allow wrapping in a Wrap widget
+      final parts = text.split(RegExp(r'(\s+|\\\\)'));
+      return Wrap(
+        spacing: 4,
+        runSpacing: 4,
+        children: parts.map((part) {
+          if (part.trim().isEmpty) return const SizedBox.shrink();
+          try {
+            return Math.tex(
+              part,
+              textStyle: textStyle,
+              onErrorFallback: (err) => Text(part, style: textStyle),
+            );
+          } catch (e) {
+            return Text(part, style: textStyle);
+          }
+        }).toList(),
+      );
+    }
+
     final longEq = Math.tex(
-      text!,
+      text,
       textStyle: textStyle,
     );
     final breakResult = longEq.texBreak(
@@ -328,24 +561,73 @@ class _QuestionWidgetState extends State<QuestionWidget> {
   }
 
   void editQuestion() {
+    final isKatex = widget.question.body?.contentType == "KATEX";
+
     showDialog(
       context: context,
       builder: (context) {
         TextEditingController controller = TextEditingController();
         controller.text = widget.question.body?.content ?? '';
-        return AlertDialog.adaptive(
-          title: const Text('Edit Question'),
-          content: TextField(
-            controller: controller,
-            onSubmitted: (value) {
-              setState(() {
-                widget.question.body?.content = controller.text;
-              });
-              Navigator.of(context).pop();
-            },
-            keyboardType: TextInputType.text,
-            textInputAction: TextInputAction.go,
-          ),
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog.adaptive(
+              title: const Text('Edit Question'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: controller,
+                      maxLines: null,
+                      onChanged: (value) {
+                        if (isKatex) setDialogState(() {});
+                      },
+                      decoration: const InputDecoration(
+                        labelText: 'Content',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.multiline,
+                    ),
+                    if (isKatex) ...[
+                      const SizedBox(height: 16),
+                      const Text('Preview:',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 12)),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: getLatexWidget(controller.text,
+                            const TextStyle(fontSize: 16, color: Colors.black)),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    setState(() {
+                      widget.question.body?.content = controller.text;
+                    });
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
         );
       },
     );

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -62,11 +61,51 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
   RxString specialInstructions = defaultSpecialInstructions.obs;
   RxString essayInstructions = defaultEssayInstructions.obs;
 
+  static const String validationInstructions = '''
+You are a professional MCQ Auditor. Your task is to validate, verify, and improve the provided MCQs.
+OUTPUT FORMAT: Return the MCQs in the EXACT SAME CSV format using ',,,' as delimiter.
+NO HEADERS, NO INTRO, NO EXPLANATION TEXT OUTSIDE THE CSV.
+
+AUDIT RULES:
+1. ACCURACY: Ensure every question is mathematically accurate and historically/scientifically proven.
+2. CLARITY: Remove ambiguity. Questions and answers must be clear and grammatically correct.
+3. SELF-CONTAINED: Every question must be understandable on its own. 
+   - REMOVE any references like "According to the text", "As mentioned in the essay", "of this passage", etc.
+4. QUALITY: Ensure exactly four options, one correct answer, and a valid explanation starting with [[EXPL]].
+5. DELIMITER: Reconfirm each line has exactly 6 ',,,' delimiters (7 columns).
+
+If a question is invalid or unfixable, discard it. If it's good, ensure it's polished.
+''';
+
+  static const String katexConversionInstructions = '''
+You are a LaTeX/KaTeX Formatting Expert. Your task is to convert MCQs into KaTeX format compatible with 'flutter-math-fork'.
+
+OUTPUT FORMAT: Return the MCQs in the EXACT SAME CSV format using ',,,' as delimiter.
+NO HEADERS, NO INTRO, NO EXPLANATION TEXT OUTSIDE THE CSV.
+
+FORMATTING RULES:
+1. NATURAL LANGUAGE: Wrap only descriptive words and full sentences in KaTeX `\\text{}` tags.
+2. CHEMISTRY: Use KaTeX for chemical formulas. Numbers should be subscripts `_`.
+   - Example: `H2O` -> `\text{H}_2\text{O}`, `NaCl` -> `\text{NaCl}`
+3. PHYSICS & MATH: Use standard KaTeX for formulas, variables, and constants.
+   - Variables/Constants (Italics): Keep single letters or symbols like `x`, `y`, `c`, `h`, `g`, `\lambda`, `\pi` OUTSIDE `\\text{}` so they render in italics.
+   - Example: `Planck's constant h` -> `\text{Planck's constant } h`
+4. NO DOLLAR SIGNS: Never use `\$` or `\$\$`.
+5. MATH COMMANDS: Use standard KaTeX (`\\frac`, `\\sqrt`, `^`, `_`, `\\alpha`).
+6. SPACING: Include spaces inside `\\text{}` to separate text from formulas.
+7. LINE BREAKS: Use `\\\\` for long questions or explanations on mobile.
+
+Example:
+Input: What is the molar mass of H2O ,,, 18g/mol ,,, 10g/mol ,,, 5g/mol ,,, 2g/mol ,,, 18g/mol ,,, [[EXPL]] Add mass of H2 and O.
+Output: \text{What is the molar mass of } \text{H}_2\text{O} ,,, 18\text{ g/mol} ,,, 10\text{ g/mol} ,,, 5\text{ g/mol} ,,, 2\text{ g/mol} ,,, 18\text{ g/mol} ,,, [[EXPL]] \text{Add mass of } \text{H}_2 \text{ and } \text{O}.
+''';
+
   final isSearchMode = false.obs;
   final isCovertCSVMode = false.obs;
   final useAiToGenerateEssay = true.obs;
   final isManualEssayMode = false.obs;
   final isPdfMode = false.obs;
+  final useKatexConversion = true.obs;
   final isAscendingOrder = true.obs;
   final searchBoxEnabled = false.obs;
 
@@ -212,7 +251,7 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
     return saved;
   }
 
-  void addQuestions(BuildContext context) {
+  void addQuestions(BuildContext? context) {
     topicID.value = topicController.text.trim();
     subject.value = subjectController.text.trim();
     int addedQuestionCount = 0;
@@ -221,33 +260,20 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
     List<Question> temp = [];
 
     String delimiter = ',,,';
-    List<String> lists = input.split('\n');
-    String joint = '';
-    for (var s in lists) {
-      s = s.replaceAll(RegExp(r',,,,'), delimiter);
-      s = s.replaceAll(RegExp(r', , ,'), delimiter);
-      s = s.replaceAll(RegExp(r', ,'), delimiter);
-      if (!s.contains(',,,')) {
-        if (s.contains(',,')) {
-          s = s.replaceAll(RegExp(r',,'), delimiter);
-        }
-      }
-      joint = '$joint\n$s';
-    }
+    // Split into lines first
+    List<String> rawRows = input.split('\n');
 
-    input = joint;
+    for (String rawRow in rawRows) {
+      if (rawRow.trim().isEmpty) continue;
 
-    List<List<dynamic>> rows = input
-        .split('\n')
-        .where((s) => s.trim().isNotEmpty)
-        .map((s) => s.split(delimiter))
-        .toList();
+      // Split by delimiter, handling minor AI space variations around it
+      List<String> row = rawRow.split(delimiter).map((s) => s.trim()).toList();
 
-    for (List<dynamic> row in rows) {
-      if (row.length < 6) continue; // Minimum 6 columns required
+      if (row.length < 6)
+        continue; // Minimum 6 columns required: Q, O1, O2, O3, O4, A
 
       // Skip header rows or example rows that the AI sometimes includes
-      String firstCol = row[0].toString().trim().toLowerCase();
+      String firstCol = row[0].toLowerCase();
       if (firstCol == "question" ||
           firstCol.startsWith("example") ||
           firstCol.contains("option1")) {
@@ -255,12 +281,13 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
       }
 
       Question q = Question();
-      String questionText = UtilFunctions.removeCommas(row[0].toString());
+      q.rawCsv = rawRow.trim();
+      String questionText = UtilFunctions.removeCommas(row[0]);
 
       // Try to find explanation in the 7th column or beyond
       String? explanation;
       if (row.length >= 7) {
-        explanation = UtilFunctions.removeCommas(row[6].toString().trim());
+        explanation = UtilFunctions.removeCommas(row[6]);
       }
 
       if (explanation != null && explanation.isNotEmpty) {
@@ -276,28 +303,98 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
       q.answerOptions = [];
 
       // Correct answer check (column 5)
-      String correctVal = UtilFunctions.removeCommas(row[5].toString().trim());
+      String correctVal = UtilFunctions.removeCommas(row[5]).toLowerCase();
 
-      // Answer options are columns 1 to 4
+      // Collect option texts first for multi-pass matching
+      List<String> optionsText = [];
       for (int i = 1; i <= 4; i++) {
-        if (i >= row.length) break;
+        if (i < row.length) {
+          optionsText.add(UtilFunctions.removeCommas(row[i]));
+        }
+      }
 
-        String optionText =
-            UtilFunctions.removeCommas(row[i].toString().trim());
+      int? correctOptionIndex;
+
+      // PASS 1: Exact Case-Insensitive Match
+      for (int i = 0; i < optionsText.length; i++) {
+        if (optionsText[i].toLowerCase() == correctVal) {
+          correctOptionIndex = i;
+          break;
+        }
+      }
+
+      // PASS 2: Label Match (A, B, C, D)
+      if (correctOptionIndex == null) {
+        if (correctVal == "a" || correctVal.startsWith("a)"))
+          correctOptionIndex = 0;
+        else if (correctVal == "b" || correctVal.startsWith("b)"))
+          correctOptionIndex = 1;
+        else if (correctVal == "c" || correctVal.startsWith("c)"))
+          correctOptionIndex = 2;
+        else if (correctVal == "d" || correctVal.startsWith("d)"))
+          correctOptionIndex = 3;
+      }
+
+      // PASS 3: Index Match ("Option 1", "1")
+      if (correctOptionIndex == null) {
+        for (int i = 0; i < optionsText.length; i++) {
+          int displayIndex = i + 1;
+          if (correctVal == "option $displayIndex" ||
+              correctVal == "$displayIndex") {
+            correctOptionIndex = i;
+            break;
+          }
+        }
+      }
+
+      // PASS 4: Fuzzy Length Match (Contains) - only if specific enough
+      if (correctOptionIndex == null && correctVal.length > 2) {
+        for (int i = 0; i < optionsText.length; i++) {
+          String normalizedOption = optionsText[i].toLowerCase();
+          if (normalizedOption.contains(correctVal) ||
+              correctVal.contains(normalizedOption)) {
+            if ((normalizedOption.length - correctVal.length).abs() < 5) {
+              correctOptionIndex = i;
+              break;
+            }
+          }
+        }
+      }
+
+      // Create AnswerOptions based on determined index
+      for (int i = 0; i < optionsText.length; i++) {
         AnswerOptions answer = AnswerOptions(
-          body: Body(content: optionText, contentType: 'PLAIN'),
-          isCorrect: optionText == correctVal,
+          body: Body(content: optionsText[i], contentType: 'PLAIN'),
+          isCorrect: correctOptionIndex == i,
         );
         checkBodyForKatex(answer.body);
         q.answerOptions?.add(answer);
       }
 
+      // Ensure consistency: if any part is KATEX, make the whole question KATEX
+      bool anyPartIsKatex = q.body?.contentType == "KATEX" ||
+          (q.answerOptions?.any((a) => a.body?.contentType == "KATEX") ??
+              false);
+
+      if (anyPartIsKatex) {
+        q.body?.contentType = "KATEX";
+        for (var opt in q.answerOptions ?? []) {
+          opt.body?.contentType = "KATEX";
+        }
+      }
+
       // Ensure at least one correct answer if AI provided a valid one
       bool hasCorrect =
           q.answerOptions?.any((a) => a.isCorrect ?? false) ?? false;
-      if (!hasCorrect && q.answerOptions!.isNotEmpty) {
-        // Fallback: if none matched exactly, it might be a formatting issue.
-        // We'll leave it as is for manual correction, or continue.
+      if (!hasCorrect &&
+          q.answerOptions != null &&
+          q.answerOptions!.isNotEmpty) {
+        try {
+          int? idx = int.tryParse(correctVal);
+          if (idx != null && idx >= 1 && idx <= q.answerOptions!.length) {
+            q.answerOptions![idx - 1].isCorrect = true;
+          }
+        } catch (e) {/* ignore */}
       }
 
       q.subjectId = subject.value;
@@ -309,34 +406,29 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
       temp.add(q);
     }
 
-    int questionsCount = questions.length;
+    int questionsCountBefore = questions.length;
     copyQuestions(temp, questions);
-    //itemScrollController.jumpTo(index: lastIndex + 1);
+    addedQuestionCount = questions.length - questionsCountBefore;
 
-    addedQuestionCount = questions.length - questionsCount;
-
-    if (kDebugMode) {
-      print(questions.length);
-      print(json.encode(temp));
+    if (context != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        snackBarAnimationStyle: const AnimationStyle(
+            duration: Duration(seconds: 1),
+            curve: Curves.easeIn,
+            reverseCurve: Curves.bounceIn,
+            reverseDuration: Duration(seconds: 1)),
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text('$addedQuestionCount new questions added successfully'),
+          backgroundColor: Colors.green,
+          padding: const EdgeInsets.all(16),
+          behavior: SnackBarBehavior.floating,
+          clipBehavior: Clip.antiAliasWithSaveLayer,
+          dismissDirection: DismissDirection.horizontal,
+          showCloseIcon: true,
+        ),
+      );
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      snackBarAnimationStyle: const AnimationStyle(
-          duration: Duration(seconds: 1),
-          curve: Curves.easeIn,
-          reverseCurve: Curves.bounceIn,
-          reverseDuration: Duration(seconds: 1)),
-      SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text('$addedQuestionCount new questions added successfully'),
-        backgroundColor: Colors.green,
-        padding: const EdgeInsets.all(16),
-        behavior: SnackBarBehavior.floating,
-        clipBehavior: Clip.antiAliasWithSaveLayer,
-        dismissDirection: DismissDirection.horizontal,
-        showCloseIcon: true,
-      ),
-    );
 
     update();
   }
@@ -486,7 +578,40 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
           .toList(),
     );
     String? csvResultRaw = await askAI(ins, description);
-    return csvResultRaw;
+
+    if (csvResultRaw == null || csvResultRaw.isEmpty) return null;
+
+    // STEP 2: VALIDATION & VERIFICATION
+    setGeneratingResponse(true, message: 'Verifying and validating MCQs...');
+
+    final valIns = Content.multi(
+      validationInstructions
+          .split('\n')
+          .where((s) => s.trim().isNotEmpty)
+          .map((s) => TextPart(s.trim()))
+          .toList(),
+    );
+
+    String? validatedCsv =
+        await askAI(valIns, "AUDIT THESE MCQS:\n\n$csvResultRaw");
+
+    if (validatedCsv == null || validatedCsv.isEmpty) return null;
+    if (!useKatexConversion.value) return validatedCsv;
+
+    // STEP 3: KATEX CONVERSION
+    setGeneratingResponse(true, message: 'Formatting MCQs for KaTeX...');
+
+    final katexIns = Content.multi(
+      katexConversionInstructions
+          .split('\n')
+          .where((s) => s.trim().isNotEmpty)
+          .map((s) => TextPart(s.trim()))
+          .toList(),
+    );
+
+    String? katexCsv =
+        await askAI(katexIns, "CONVERT THESE TO KATEX:\n\n$validatedCsv");
+    return katexCsv;
   }
 
   Future<void> pickAndExtractFromPdf(BuildContext context) async {
@@ -615,10 +740,8 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
 
         String? csvResponse = await getCsvResponse(fullPrompt);
         if (csvResponse != null) {
-          if (context.mounted) {
-            setCSV(csvResponse);
-            addQuestions(context);
-          }
+          setCSV(csvResponse);
+          addQuestions(context);
         }
       } else {
         String finalEssayInstructions = essayInstructions.value
@@ -638,10 +761,8 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
         if (generatedDescription != null) {
           String? csvFromEssay = await getCsvResponse(generatedDescription);
           if (csvFromEssay != null) {
-            if (context.mounted) {
-              setCSV(csvFromEssay);
-              addQuestions(context);
-            }
+            setCSV(csvFromEssay);
+            addQuestions(context);
           }
         }
       }
@@ -791,17 +912,33 @@ The Essay includes: history, actions, reactions, parts, sub-parts, examples, for
   }
 
   void checkBodyForKatex(Body? body) {
-    String questionText = body?.content ?? "";
-    if (questionText.isNotEmpty) {
-      bool isHtml = questionText.toLowerCase().contains("<sub>") ||
-          questionText.toLowerCase().contains("</sub>") ||
-          questionText.toLowerCase().contains("<sup>") ||
-          questionText.toLowerCase().contains("</sup>");
-      if (isHtml) {
-        String html = questionText;
-        body?.content = convertHtmlToFlutterKatex(html);
-        body?.contentType = "KATEX";
+    String text = body?.content ?? "";
+    if (text.isEmpty) return;
+
+    // Detect HTML tags (existing logic)
+    bool hasMathHints = text.toLowerCase().contains("<sub>") ||
+        text.toLowerCase().contains("</sub>") ||
+        text.toLowerCase().contains("<sup>") ||
+        text.toLowerCase().contains("</sup>") ||
+        // Detect common LaTeX commands
+        text.contains("\\frac") ||
+        text.contains("\\sqrt") ||
+        text.contains("\\text") ||
+        text.contains("\\alpha") ||
+        text.contains("\\beta") ||
+        text.contains("\\gamma") ||
+        text.contains("\\sum") ||
+        text.contains("\\omega") ||
+        text.contains("\\int") ||
+        text.contains("^{") ||
+        text.contains("_{");
+
+    if (hasMathHints) {
+      if (text.toLowerCase().contains("<sub>") ||
+          text.toLowerCase().contains("<sup>")) {
+        body?.content = convertHtmlToFlutterKatex(text);
       }
+      body?.contentType = "KATEX";
     }
   }
 

@@ -5,6 +5,7 @@ class Question {
   List<AnswerOptions>? answerOptions;
   String? topicId;
   String? subjectId;
+  String? rawCsv;
 
   Question(
       {this.body,
@@ -12,7 +13,8 @@ class Question {
       this.assignedPoints,
       this.answerOptions,
       this.topicId,
-      this.subjectId});
+      this.subjectId,
+      this.rawCsv});
 
   Question.fromJson(Map<String, dynamic> json) {
     body = json['body'] != null ? Body.fromJson(json['body']) : null;
@@ -26,6 +28,7 @@ class Question {
     }
     topicId = json['topicId'];
     subjectId = json['subjectId'];
+    rawCsv = json['rawCsv'];
   }
 
   Map<String, dynamic> toJson() {
@@ -40,6 +43,7 @@ class Question {
     }
     data['topicId'] = topicId;
     data['subjectId'] = subjectId;
+    data['rawCsv'] = rawCsv;
     return data;
   }
 }

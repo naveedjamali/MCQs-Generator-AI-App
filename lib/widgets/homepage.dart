@@ -25,6 +25,8 @@ class Homepage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSmallScreen = MediaQuery.of(context).size.width <= 600;
+
     return SafeArea(
       child: Scaffold(
         drawer: AppDrawer(
@@ -66,11 +68,12 @@ class Homepage extends StatelessWidget {
                 )
               : Row(
                   children: [
-                    const Text(
-                      "MCQs Gen",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    const SizedBox(width: 8),
+                    if (!isSmallScreen)
+                      const Text(
+                        "MCQs Gen",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    if (!isSmallScreen) const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 2),
@@ -89,6 +92,7 @@ class Homepage extends StatelessWidget {
                   ],
                 )),
           actions: [
+            GeneratingQuestionsProgressIndicator(),
             Obx(() => IconButton(
                   icon: Icon(
                     controller.showSearchField.value
@@ -105,91 +109,114 @@ class Homepage extends StatelessWidget {
                     }
                   },
                 )),
-            GeneratingQuestionsProgressIndicator(),
           ],
         ),
-        body: Stack(
+        floatingActionButton: isSmallScreen
+            ? FloatingActionButton.extended(
+                onPressed: () => _showGenerationDialog(context),
+                icon: const Icon(Icons.add),
+                label: const Text('Generate MCQs'),
+              )
+            : null,
+        body: Column(
           children: [
-            Column(
-              children: [
-                // Controls
-                Material(
-                  elevation: 1,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          SortQuestionsButton(),
-                          ShuffleQuestionsWidget(),
-                          DeleteAllQuestionsWidget(
-                            deleteQuestions: (context) =>
-                                deleteQuestions(context),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                // Questions List
-                Expanded(
-                  child: QuestionsListWidget(),
-                ),
-                // Prompt Input at the bottom
-                Container(
-                  padding: const EdgeInsets.all(8.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, -2),
-                      ),
-                    ],
-                  ),
-                  child: AiWidget(),
-                ),
-              ],
-            ),
             Obx(() => controller.generatingResponse.value
-                ? Container(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    child: Center(
-                      child: Card(
-                        margin: const EdgeInsets.all(32),
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
+                ? LinearProgressIndicator(
+                    backgroundColor:
+                        Theme.of(context).colorScheme.primaryContainer,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                        Theme.of(context).colorScheme.primary),
+                  )
+                : const SizedBox(height: 4)),
+            // Controls
+            Material(
+              elevation: 1,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      SortQuestionsButton(),
+                      ShuffleQuestionsWidget(),
+                      DeleteAllQuestionsWidget(
+                        deleteQuestions: (context) => deleteQuestions(context),
+                      ),
+                      if (MediaQuery.of(context).size.width > 600)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const CircularProgressIndicator(),
-                              const SizedBox(height: 20),
-                              Text(
-                                controller.loadingMessage.value,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Please wait a moment...',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                ),
-                              ),
+                              const Text('Show Answers',
+                                  style: TextStyle(fontSize: 12)),
+                              Obx(() => Switch(
+                                    value: controller.showAnswers.value,
+                                    onChanged: (val) =>
+                                        controller.showAnswers.value = val,
+                                  )),
                             ],
                           ),
                         ),
-                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // Questions List
+            Expanded(
+              child: QuestionsListWidget(),
+            ),
+            // Prompt Input at the bottom (Desktop only)
+            if (!isSmallScreen)
+              Container(
+                padding: const EdgeInsets.all(8.0),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, -2),
                     ),
-                  )
-                : const SizedBox.shrink()),
+                  ],
+                ),
+                child: AiWidget(),
+              ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showGenerationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Generation Console',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
+              AiWidget(),
+            ],
+          ),
         ),
       ),
     );
