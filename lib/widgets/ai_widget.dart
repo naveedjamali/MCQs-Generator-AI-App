@@ -143,21 +143,22 @@ class AiWidget extends StatelessWidget {
             const Spacer(),
             TextButton(
               onPressed: () => controller.clearEntries(),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style: TextButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  minimumSize: const Size(50, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 8)),
               child: const Text('Clear'),
             ),
             const SizedBox(width: 4),
-            Expanded(
-              flex: 4,
-              child: ElevatedButton.icon(
-                onPressed: () => _handleSubmission(context),
-                icon: const Icon(Icons.auto_awesome, size: 18),
-                label: const Text('Generate', overflow: TextOverflow.ellipsis),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                ),
+            ElevatedButton.icon(
+              onPressed: () => _handleSubmission(context),
+              icon: const Icon(Icons.auto_awesome, size: 16),
+              label: const Text('Generate', style: TextStyle(fontSize: 13)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                elevation: 0,
               ),
             ),
           ],

@@ -302,11 +302,12 @@ class _QuestionWidgetState extends State<QuestionWidget> {
                 tooltip: 'Delete Question',
               ),
           ] else
-            InkWell(
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
               onTap: () => _showQuestionContextMenu(context, questionText),
               child: const Padding(
-                padding: EdgeInsets.only(left: 8.0, top: 4.0),
-                child: Icon(Icons.more_vert, size: 20, color: Colors.grey),
+                padding: EdgeInsets.only(left: 16.0, top: 4.0, bottom: 8.0),
+                child: Icon(Icons.more_vert, size: 24, color: Colors.grey),
               ),
             ),
         ],
@@ -514,39 +515,42 @@ class _QuestionWidgetState extends State<QuestionWidget> {
     );
   }
 
+  String _makeKatexBreakable(String input) {
+    // Find all \text{...} blocks and split them into individual words wrapped in \text{}
+    // This allows the texBreak engine to find logical break points at spaces.
+    return input.replaceAllMapped(RegExp(r'\\text\{([^}]*)\}'), (match) {
+      String content = match.group(1) ?? "";
+      if (content.isEmpty) return "";
+      return content
+          .split(' ')
+          .where((word) => word.isNotEmpty)
+          .map((word) => '\\text{$word }')
+          .join(' ');
+    });
+  }
+
   Widget getLatexWidget(String? text, TextStyle textStyle) {
     if (text == null || text.isEmpty) return const SizedBox.shrink();
 
-    final isSmallScreen = MediaQuery.of(context).size.width <= 600;
+    // Transform large blocks into breakable chunks
+    final breakableText = _makeKatexBreakable(text);
 
-    if (isSmallScreen) {
-      // Split by spaces or LaTeX line breaks to allow wrapping in a Wrap widget
-      final parts = text.split(RegExp(r'(\s+|\\\\)'));
-      return Wrap(
-        spacing: 4,
-        runSpacing: 4,
-        children: parts.map((part) {
-          if (part.trim().isEmpty) return const SizedBox.shrink();
-          try {
-            return Math.tex(
-              part,
-              textStyle: textStyle,
-              onErrorFallback: (err) => Text(part, style: textStyle),
-            );
-          } catch (e) {
-            return Text(part, style: textStyle);
-          }
-        }).toList(),
+    try {
+      final longEq = Math.tex(
+        breakableText,
+        textStyle: textStyle,
       );
+      final breakResult = longEq.texBreak(
+          enforceNoBreak: false, binOpPenalty: 10, relPenalty: 10);
+      return Wrap(
+        spacing: 0,
+        runSpacing: 4,
+        children: breakResult.parts,
+      );
+    } catch (e) {
+      // If transformation fails, fallback to original rendering
+      return Math.tex(text, textStyle: textStyle);
     }
-
-    final longEq = Math.tex(
-      text,
-      textStyle: textStyle,
-    );
-    final breakResult = longEq.texBreak(
-        enforceNoBreak: false, binOpPenalty: 100, relPenalty: 100);
-    return Wrap(children: breakResult.parts);
   }
 
   void copyText(String text) {

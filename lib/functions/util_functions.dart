@@ -92,6 +92,7 @@ class UtilFunctions {
 
       qMap['topicId'] = topic;
       qMap['subjectId'] = subject;
+      qMap.remove('rawCsv'); // Strip original AI response for external systems
       return qMap;
     }).toList();
 
