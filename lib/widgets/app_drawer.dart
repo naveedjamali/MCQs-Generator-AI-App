@@ -203,7 +203,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     'KaTeX Conversion',
                     widget.controller.useKatexConversion,
                     (value) =>
-                        widget.controller.useKatexConversion.value = value,
+                        widget.controller.saveKatexConversionState(value),
                   ),
                   _buildSwitchTile(
                     'Manual Essay Mode',
@@ -290,6 +290,17 @@ class _AppDrawerState extends State<AppDrawer> {
                       widget.controller.essayInstructions.value,
                       (val) =>
                           widget.controller.saveEssayInstructionsToStorage(val),
+                    ),
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.functions_outlined,
+                    title: 'KaTeX AI Instructions',
+                    onTap: () => _showInstructionsEditDialog(
+                      context,
+                      'KaTeX Instructions',
+                      widget.controller.katexConversionInstructions.value,
+                      (val) =>
+                          widget.controller.saveKatexInstructionsToStorage(val),
                     ),
                   ),
                   _buildDrawerItem(

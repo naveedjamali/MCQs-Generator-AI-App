@@ -60,7 +60,8 @@ class _QuestionWidgetState extends State<QuestionWidget> {
     return Dismissible(
       key: Key(
           'question_${widget.index}_${widget.question.body?.content.hashCode}'),
-      direction: DismissDirection.horizontal,
+      direction:
+          isSmallScreen ? DismissDirection.horizontal : DismissDirection.none,
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.startToEnd) {
           // Swipe Right: Edit
@@ -294,6 +295,12 @@ class _QuestionWidgetState extends State<QuestionWidget> {
                     color: Colors.blueGrey, size: 20),
                 tooltip: 'Copy RAW CSV',
               ),
+            IconButton(
+              onPressed: () => editQuestion(),
+              icon:
+                  const Icon(Icons.edit_outlined, color: Colors.blue, size: 20),
+              tooltip: 'Edit Question',
+            ),
             if (isWideScreen)
               IconButton(
                 onPressed: () => widget.deleteQuestion(widget.index),
@@ -532,6 +539,28 @@ class _QuestionWidgetState extends State<QuestionWidget> {
   Widget getLatexWidget(String? text, TextStyle textStyle) {
     if (text == null || text.isEmpty) return const SizedBox.shrink();
 
+    // Split by explicit line breaks first (\\ is instructed to the AI)
+    final lines = text.split(r'\\');
+
+    if (lines.length > 1) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: lines
+            .map((line) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4.0),
+                  child: _renderLatexLine(line.trim(), textStyle),
+                ))
+            .toList(),
+      );
+    } else {
+      return _renderLatexLine(text, textStyle);
+    }
+  }
+
+  Widget _renderLatexLine(String text, TextStyle textStyle) {
+    if (text.isEmpty) return const SizedBox(height: 8);
+
     // Transform large blocks into breakable chunks
     final breakableText = _makeKatexBreakable(text);
 
@@ -545,6 +574,7 @@ class _QuestionWidgetState extends State<QuestionWidget> {
       return Wrap(
         spacing: 0,
         runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.start,
         children: breakResult.parts,
       );
     } catch (e) {

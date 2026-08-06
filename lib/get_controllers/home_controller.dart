@@ -57,27 +57,7 @@ essay type: in-depth.
 The Essay includes: history, actions, reactions, parts, sub-parts, examples, formulas, measurements, structure, importance, inventions, discoveries, scientists, artists, uses, involvements, dates, types, subtypes, etc.
 ''';
 
-  RxString csvInstructions = defaultCsvInstructions.obs;
-  RxString specialInstructions = defaultSpecialInstructions.obs;
-  RxString essayInstructions = defaultEssayInstructions.obs;
-
-  static const String validationInstructions = '''
-You are a professional MCQ Auditor. Your task is to validate, verify, and improve the provided MCQs.
-OUTPUT FORMAT: Return the MCQs in the EXACT SAME CSV format using ',,,' as delimiter.
-NO HEADERS, NO INTRO, NO EXPLANATION TEXT OUTSIDE THE CSV.
-
-AUDIT RULES:
-1. ACCURACY: Ensure every question is mathematically accurate and historically/scientifically proven.
-2. CLARITY: Remove ambiguity. Questions and answers must be clear and grammatically correct.
-3. SELF-CONTAINED: Every question must be understandable on its own. 
-   - REMOVE any references like "According to the text", "As mentioned in the essay", "of this passage", etc.
-4. QUALITY: Ensure exactly four options, one correct answer, and a valid explanation starting with [[EXPL]].
-5. DELIMITER: Reconfirm each line has exactly 6 ',,,' delimiters (7 columns).
-
-If a question is invalid or unfixable, discard it. If it's good, ensure it's polished.
-''';
-
-  static const String katexConversionInstructions = '''
+  static const String defaultKatexConversionInstructions = '''
 You are a LaTeX/KaTeX Formatting Expert. Your task is to convert MCQs into KaTeX format compatible with 'flutter-math-fork'.
 
 OUTPUT FORMAT: Return the MCQs in the EXACT SAME CSV format using ',,,' as delimiter.
@@ -93,11 +73,32 @@ FORMATTING RULES:
 4. NO DOLLAR SIGNS: Never use `\$` or `\$\$`.
 5. MATH COMMANDS: Use standard KaTeX (`\\frac`, `\\sqrt`, `^`, `_`, `\\alpha`).
 6. SPACING: Include spaces inside `\\text{}` to separate text from formulas.
-7. LINE BREAKS: Use `\\\\` for long questions or explanations on mobile.
+7. LINE BREAKS: Use `\\\\` for long questions, answers, or explanations on mobile.
 
 Example:
 Input: What is the molar mass of H2O ,,, 18g/mol ,,, 10g/mol ,,, 5g/mol ,,, 2g/mol ,,, 18g/mol ,,, [[EXPL]] Add mass of H2 and O.
 Output: \text{What is the molar mass of } \text{H}_2\text{O} ,,, 18\text{ g/mol} ,,, 10\text{ g/mol} ,,, 5\text{ g/mol} ,,, 2\text{ g/mol} ,,, 18\text{ g/mol} ,,, [[EXPL]] \text{Add mass of } \text{H}_2 \text{ and } \text{O}.
+''';
+
+  RxString csvInstructions = defaultCsvInstructions.obs;
+  RxString specialInstructions = defaultSpecialInstructions.obs;
+  RxString essayInstructions = defaultEssayInstructions.obs;
+  RxString katexConversionInstructions = defaultKatexConversionInstructions.obs;
+
+  static const String validationInstructions = '''
+You are a professional MCQ Auditor. Your task is to validate, verify, and improve the provided MCQs.
+OUTPUT FORMAT: Return the MCQs in the EXACT SAME CSV format using ',,,' as delimiter.
+NO HEADERS, NO INTRO, NO EXPLANATION TEXT OUTSIDE THE CSV.
+
+AUDIT RULES:
+1. ACCURACY: Ensure every question is mathematically accurate and historically/scientifically proven.
+2. CLARITY: Remove ambiguity. Questions and answers must be clear and grammatically correct.
+3. SELF-CONTAINED: Every question must be understandable on its own. 
+   - REMOVE any references like "According to the text", "As mentioned in the essay", "of this passage", etc.
+4. QUALITY: Ensure exactly four options, one correct answer, and a valid explanation starting with [[EXPL]].
+5. DELIMITER: Reconfirm each line has exactly 6 ',,,' delimiters (7 columns).
+
+If a question is invalid or unfixable, discard it. If it's good, ensure it's polished.
 ''';
 
   final isSearchMode = false.obs;
@@ -180,8 +181,14 @@ Output: \text{What is the molar mass of } \text{H}_2\text{O} ,,, 18\text{ g/mol}
         sp.getString("CSV_INSTRUCTIONS") ?? csvInstructions.value;
     specialInstructions.value =
         sp.getString("SPECIAL_INSTRUCTIONS") ?? specialInstructions.value;
+    katexConversionInstructions.value =
+        sp.getString("KATEX_CUSTOM_INSTRUCTIONS") ??
+            katexConversionInstructions.value;
     essayInstructions.value =
         sp.getString("ESSAY_INSTRUCTIONS") ?? essayInstructions.value;
+
+    // Read state persistence
+    useKatexConversion.value = sp.getBool("USE_KATEX_CONVERSION") ?? true;
   }
 
   Future<bool> saveCsvInstructionsToStorage(String instructions) async {
@@ -200,6 +207,22 @@ Output: \text{What is the molar mass of } \text{H}_2\text{O} ,,, 18\text{ g/mol}
     return saved;
   }
 
+  Future<bool> saveKatexInstructionsToStorage(String instructions) async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    bool saved = await sp.setString("KATEX_CUSTOM_INSTRUCTIONS", instructions);
+    katexConversionInstructions.value = instructions;
+    update();
+    return saved;
+  }
+
+  Future<bool> saveKatexConversionState(bool value) async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    bool saved = await sp.setBool("USE_KATEX_CONVERSION", value);
+    useKatexConversion.value = value;
+    update();
+    return saved;
+  }
+
   Future<bool> saveEssayInstructionsToStorage(String instructions) async {
     SharedPreferences sp = await SharedPreferences.getInstance();
     bool saved = await sp.setString("ESSAY_INSTRUCTIONS", instructions);
@@ -212,9 +235,11 @@ Output: \text{What is the molar mass of } \text{H}_2\text{O} ,,, 18\text{ g/mol}
     SharedPreferences sp = await SharedPreferences.getInstance();
     await sp.remove("CSV_INSTRUCTIONS");
     await sp.remove("SPECIAL_INSTRUCTIONS");
+    await sp.remove("KATEX_CUSTOM_INSTRUCTIONS");
     await sp.remove("ESSAY_INSTRUCTIONS");
     csvInstructions.value = defaultCsvInstructions;
     specialInstructions.value = defaultSpecialInstructions;
+    katexConversionInstructions.value = defaultKatexConversionInstructions;
     essayInstructions.value = defaultEssayInstructions;
     update();
   }
