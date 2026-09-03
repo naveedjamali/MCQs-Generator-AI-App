@@ -13,7 +13,8 @@ class EntriesWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() => ListView.builder(
-          itemCount: controller.useAiToGenerateEssay.value
+          itemCount: (controller.useAiToGenerateEssay.value ||
+                  controller.useDirectMcqGeneration.value)
               ? controller.entries.length
               : controller.essays.length,
           itemBuilder: (context, index) {
@@ -21,7 +22,8 @@ class EntriesWidget extends StatelessWidget {
                 padding: const EdgeInsets.all(8.0),
                 child: ListTile(
                   subtitle: Text(
-                    controller.useAiToGenerateEssay.value
+                    (controller.useAiToGenerateEssay.value ||
+                            controller.useDirectMcqGeneration.value)
                         ? controller.entries[index]
                         : controller.essays[index].substring(0, 50),
                     style: const TextStyle(
@@ -34,7 +36,8 @@ class EntriesWidget extends StatelessWidget {
                       builder: (context) => AlertDialog(
                         scrollable: true,
                         content: SelectableText(
-                            controller.useAiToGenerateEssay.value
+                            (controller.useAiToGenerateEssay.value ||
+                                    controller.useDirectMcqGeneration.value)
                                 ? controller.entries[index]
                                 : controller.essays[index]),
                       ),

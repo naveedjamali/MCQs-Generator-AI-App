@@ -104,6 +104,7 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
   final isSearchMode = false.obs;
   final isCovertCSVMode = false.obs;
   final useAiToGenerateEssay = true.obs;
+  final useDirectMcqGeneration = false.obs;
   final isManualEssayMode = false.obs;
   final isPdfMode = false.obs;
   final useKatexConversion = true.obs;
@@ -189,6 +190,8 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
 
     // Read state persistence
     useKatexConversion.value = sp.getBool("USE_KATEX_CONVERSION") ?? true;
+    useDirectMcqGeneration.value = sp.getBool("USE_DIRECT_MCQ") ?? false;
+    useAiToGenerateEssay.value = sp.getBool("USE_AI_ESSAY") ?? true;
   }
 
   Future<bool> saveCsvInstructionsToStorage(String instructions) async {
@@ -219,6 +222,36 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     SharedPreferences sp = await SharedPreferences.getInstance();
     bool saved = await sp.setBool("USE_KATEX_CONVERSION", value);
     useKatexConversion.value = value;
+    update();
+    return saved;
+  }
+
+  Future<bool> saveDirectMcqState(bool value) async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    bool saved = await sp.setBool("USE_DIRECT_MCQ", value);
+    useDirectMcqGeneration.value = value;
+    if (value) {
+      useAiToGenerateEssay.value = false;
+      await sp.setBool("USE_AI_ESSAY", false);
+    } else {
+      useAiToGenerateEssay.value = true;
+      await sp.setBool("USE_AI_ESSAY", true);
+    }
+    update();
+    return saved;
+  }
+
+  Future<bool> saveAiEssayState(bool value) async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    bool saved = await sp.setBool("USE_AI_ESSAY", value);
+    useAiToGenerateEssay.value = value;
+    if (value) {
+      useDirectMcqGeneration.value = false;
+      await sp.setBool("USE_DIRECT_MCQ", false);
+    } else {
+      useDirectMcqGeneration.value = true;
+      await sp.setBool("USE_DIRECT_MCQ", true);
+    }
     update();
     return saved;
   }
@@ -518,10 +551,10 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
   }
 
   void addEntry(String entry) {
-    if (!useAiToGenerateEssay.value) {
-      essays.insert(0, entry);
-    } else {
+    if (useAiToGenerateEssay.value || useDirectMcqGeneration.value) {
       entries.insert(0, entry);
+    } else {
+      essays.insert(0, entry);
     }
 
     update();
@@ -585,10 +618,19 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     }
   }
 
-  Future<String?> getCsvResponse(String description) async {
-    String count = useAiToGenerateEssay.value ? '30' : 'minimum 60';
+  Future<String?> getCsvResponse(String description,
+      {bool isDirect = false}) async {
+    String count = (useAiToGenerateEssay.value || useDirectMcqGeneration.value)
+        ? '30'
+        : 'minimum 60';
     String combinedInstructions =
         "${csvInstructions.value}\n\nSPECIAL INSTRUCTIONS:\n${specialInstructions.value}";
+
+    if (isDirect) {
+      combinedInstructions = combinedInstructions.replaceFirst(
+          "MOST IMPORTANT: Generate MCQs from the given text only.",
+          "MOST IMPORTANT: Generate MCQs based on the provided Subject and Topic.");
+    }
 
     String finalInstructions = combinedInstructions
         .replaceAll('{count}', count)
@@ -743,7 +785,15 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
   Future<void> getAIDescription(String text, BuildContext context) async {
     setGeneratingResponse(true, message: 'Generating MCQs with Gemini AI...');
     try {
-      if (isPdfMode.value ||
+      if (useDirectMcqGeneration.value) {
+        String directPrompt =
+            "Subject: ${subject.value}\nTopic: ${topicID.value}\nContext/Instructions: $text";
+        String? csvResponse = await getCsvResponse(directPrompt, isDirect: true);
+        if (csvResponse != null) {
+          setCSV(csvResponse);
+          addQuestions(context);
+        }
+      } else if (isPdfMode.value ||
           isManualEssayMode.value ||
           !useAiToGenerateEssay.value) {
         String fullPrompt = text;

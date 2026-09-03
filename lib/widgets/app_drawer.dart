@@ -230,11 +230,21 @@ class _AppDrawerState extends State<AppDrawer> {
                   Obx(() => !widget.controller.isManualEssayMode.value &&
                           !widget.controller.isCovertCSVMode.value &&
                           !widget.controller.isPdfMode.value
-                      ? _buildSwitchTile(
-                          'AI Write Essay First',
-                          widget.controller.useAiToGenerateEssay,
-                          (value) => widget
-                              .controller.useAiToGenerateEssay.value = value,
+                      ? Column(
+                          children: [
+                            _buildSwitchTile(
+                              'AI Write Essay First',
+                              widget.controller.useAiToGenerateEssay,
+                              (value) =>
+                                  widget.controller.saveAiEssayState(value),
+                            ),
+                            _buildSwitchTile(
+                              'Direct MCQ Generation',
+                              widget.controller.useDirectMcqGeneration,
+                              (value) =>
+                                  widget.controller.saveDirectMcqState(value),
+                            ),
+                          ],
                         )
                       : const SizedBox.shrink()),
                   ListTile(
