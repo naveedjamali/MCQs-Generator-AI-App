@@ -83,11 +83,25 @@ class AiWidget extends StatelessWidget {
                   child: Wrap(
                     alignment: WrapAlignment.center,
                     crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 8,
+                    spacing: 6,
                     runSpacing: 4,
                     children: [
                       _buildCompactRadio('Essay First', false),
                       _buildCompactRadio('Direct MCQs', true),
+                      const SizedBox(width: 4),
+                      const Text('|',
+                          style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      const SizedBox(width: 4),
+                      const Text('Difficulty:',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.bold)),
+                      _buildDifficultyRadio('Easy'),
+                      _buildDifficultyRadio('Medium'),
+                      _buildDifficultyRadio('Hard'),
+                      const SizedBox(width: 4),
+                      const Text('|',
+                          style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      const SizedBox(width: 4),
                       _buildLanguageChip(context),
                     ],
                   ),
@@ -207,7 +221,7 @@ class AiWidget extends StatelessWidget {
           },
           borderRadius: BorderRadius.circular(20),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -229,6 +243,42 @@ class AiWidget extends StatelessWidget {
             ),
           ),
         ));
+  }
+
+  Widget _buildDifficultyRadio(String level) {
+    return Obx(() {
+      final isSelected = controller.selectedDifficulty.value == level;
+      return InkWell(
+        onTap: () => controller.saveSelectedDifficulty(level),
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Radio<String>(
+                value: level,
+                groupValue: controller.selectedDifficulty.value,
+                onChanged: (val) {
+                  if (val != null) {
+                    controller.saveSelectedDifficulty(val);
+                  }
+                },
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
+              Text(
+                level,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
   }
 
   Widget _buildLanguageChip(BuildContext context) {

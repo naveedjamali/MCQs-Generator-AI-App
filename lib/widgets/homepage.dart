@@ -112,22 +112,11 @@ class Homepage extends StatelessWidget {
                           value: controller.showAnswers.value,
                           onChanged: (val) =>
                               controller.showAnswers.value = val,
-                          activeColor: Colors.white,
+                          activeThumbColor: Colors.white,
                         )),
                   ],
                 ),
               ),
-              Obx(() => _buildAppBarDropdown<String>(
-                    context: context,
-                    icon: Icons.speed_outlined,
-                    value: controller.selectedDifficulty.value,
-                    items: const ['Easy', 'Medium', 'Hard'],
-                    onChanged: (val) {
-                      if (val != null) {
-                        controller.saveSelectedDifficulty(val);
-                      }
-                    },
-                  )),
               Obx(() => _buildAppBarModelDropdown(context)),
             ],
             Obx(() => IconButton(
