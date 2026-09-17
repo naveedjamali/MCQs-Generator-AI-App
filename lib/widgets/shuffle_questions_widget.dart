@@ -5,22 +5,25 @@ import '../get_controllers/home_controller.dart';
 class ShuffleQuestionsWidget extends StatelessWidget {
   ShuffleQuestionsWidget({
     super.key,
+    this.isAppBar = false,
   });
 
+  final bool isAppBar;
   final AppController controller = Get.find();
 
   @override
   Widget build(BuildContext context) {
+    final color = isAppBar ? Colors.white : Colors.blueGrey.shade700;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+      padding: const EdgeInsets.symmetric(horizontal: 2.0),
       child: TextButton.icon(
         onPressed: () {
           controller.questions.shuffle();
         },
-        icon: const Icon(Icons.shuffle, size: 20),
-        label: const Text('Shuffle'),
+        icon: Icon(Icons.shuffle, size: 18, color: color),
+        label: Text('Shuffle', style: TextStyle(color: color, fontSize: 13)),
         style: TextButton.styleFrom(
-          foregroundColor: Colors.blueGrey.shade700,
+          foregroundColor: color,
         ),
       ),
     );

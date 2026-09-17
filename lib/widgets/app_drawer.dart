@@ -138,28 +138,51 @@ class _AppDrawerState extends State<AppDrawer> {
                 const SizedBox(height: 16),
                 _buildSectionTitle('Customization'),
                 _buildModernCard([
-                  Obx(() => _buildDropdownItem<String>(
-                        icon: Icons.language_outlined,
-                        title: 'Target Language',
-                        value: widget.controller.selectedLanguage.value,
-                        items: [
-                          'English',
-                          'Urdu',
-                          'Sindhi',
-                          'Arabic',
-                          'Spanish',
-                          'French'
-                        ],
-                        onChanged: (val) =>
-                            widget.controller.selectedLanguage.value = val!,
-                      )),
+                  Obx(() {
+                    final currentLang =
+                        widget.controller.selectedLanguage.value;
+                    final defaultList = [
+                      'English',
+                      'Urdu',
+                      'Sindhi',
+                      'Arabic',
+                      'Spanish',
+                      'French',
+                      'German',
+                      'Hindi',
+                      'Bengali',
+                      'Pashto',
+                      'Punjabi',
+                      'Chinese',
+                      'Russian',
+                      'Turkish',
+                      'Custom...',
+                    ];
+                    final itemsList = List<String>.from(defaultList);
+                    if (!itemsList.contains(currentLang)) {
+                      itemsList.insert(itemsList.length - 1, currentLang);
+                    }
+                    return _buildDropdownItem<String>(
+                      icon: Icons.language_outlined,
+                      title: 'Target Language',
+                      value: currentLang,
+                      items: itemsList,
+                      onChanged: (val) {
+                        if (val == 'Custom...') {
+                          _showCustomLanguageDialog(context);
+                        } else if (val != null) {
+                          widget.controller.saveSelectedLanguage(val);
+                        }
+                      },
+                    );
+                  }),
                   Obx(() => _buildDropdownItem<String>(
                         icon: Icons.speed_outlined,
                         title: 'Difficulty Level',
                         value: widget.controller.selectedDifficulty.value,
                         items: ['Easy', 'Medium', 'Hard'],
                         onChanged: (val) =>
-                            widget.controller.selectedDifficulty.value = val!,
+                            widget.controller.saveSelectedDifficulty(val!),
                       )),
                 ]),
                 const SizedBox(height: 16),
@@ -521,6 +544,41 @@ class _AppDrawerState extends State<AppDrawer> {
         ],
       ),
       dense: true,
+    );
+  }
+
+  void _showCustomLanguageDialog(BuildContext context) {
+    final TextEditingController langController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter Custom Language'),
+        content: TextField(
+          controller: langController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'e.g. Japanese, Latin, Turkish...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final text = langController.text.trim();
+              if (text.isNotEmpty) {
+                widget.controller.saveSelectedLanguage(text);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
     );
   }
 

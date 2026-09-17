@@ -71,7 +71,8 @@ class Homepage extends StatelessWidget {
                     if (!isSmallScreen)
                       const Text(
                         "MCQs Gen",
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                     if (!isSmallScreen) const SizedBox(width: 8),
                     Container(
@@ -93,6 +94,42 @@ class Homepage extends StatelessWidget {
                 )),
           actions: [
             GeneratingQuestionsProgressIndicator(),
+            if (!isSmallScreen) ...[
+              SortQuestionsButton(isAppBar: true),
+              ShuffleQuestionsWidget(isAppBar: true),
+              DeleteAllQuestionsWidget(
+                deleteQuestions: (context) => deleteQuestions(context),
+                isAppBar: true,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Show Answers',
+                        style: TextStyle(fontSize: 12, color: Colors.white)),
+                    Obx(() => Switch(
+                          value: controller.showAnswers.value,
+                          onChanged: (val) =>
+                              controller.showAnswers.value = val,
+                          activeColor: Colors.white,
+                        )),
+                  ],
+                ),
+              ),
+              Obx(() => _buildAppBarDropdown<String>(
+                    context: context,
+                    icon: Icons.speed_outlined,
+                    value: controller.selectedDifficulty.value,
+                    items: const ['Easy', 'Medium', 'Hard'],
+                    onChanged: (val) {
+                      if (val != null) {
+                        controller.saveSelectedDifficulty(val);
+                      }
+                    },
+                  )),
+              Obx(() => _buildAppBarModelDropdown(context)),
+            ],
             Obx(() => IconButton(
                   icon: Icon(
                     controller.showSearchField.value
@@ -128,41 +165,27 @@ class Homepage extends StatelessWidget {
                         Theme.of(context).colorScheme.primary),
                   )
                 : const SizedBox(height: 4)),
-            // Controls
-            Material(
-              elevation: 1,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      SortQuestionsButton(),
-                      ShuffleQuestionsWidget(),
-                      DeleteAllQuestionsWidget(
-                        deleteQuestions: (context) => deleteQuestions(context),
-                      ),
-                      if (MediaQuery.of(context).size.width > 600)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text('Show Answers',
-                                  style: TextStyle(fontSize: 12)),
-                              Obx(() => Switch(
-                                    value: controller.showAnswers.value,
-                                    onChanged: (val) =>
-                                        controller.showAnswers.value = val,
-                                  )),
-                            ],
-                          ),
+            // Controls (Mobile Only)
+            if (isSmallScreen)
+              Material(
+                elevation: 1,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        SortQuestionsButton(),
+                        ShuffleQuestionsWidget(),
+                        DeleteAllQuestionsWidget(
+                          deleteQuestions: (context) =>
+                              deleteQuestions(context),
                         ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
             // Questions List
             Expanded(
               child: QuestionsListWidget(),
@@ -189,6 +212,94 @@ class Homepage extends StatelessWidget {
     );
   }
 
+  Widget _buildAppBarDropdown<T>({
+    required BuildContext context,
+    required IconData icon,
+    required T value,
+    required List<T> items,
+    required ValueChanged<T?> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<T>(
+            value: value,
+            icon: const Icon(Icons.arrow_drop_down,
+                color: Colors.white, size: 20),
+            dropdownColor: Theme.of(context).colorScheme.surface,
+            style: const TextStyle(
+                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+            items: items.map((item) {
+              return DropdownMenuItem<T>(
+                value: item,
+                child: Text(
+                  item.toString(),
+                  style: const TextStyle(color: Colors.black, fontSize: 13),
+                ),
+              );
+            }).toList(),
+            onChanged: onChanged,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBarModelDropdown(BuildContext context) {
+    final Map<String, String> modelMap = {
+      'gemini-2.5-flash': 'Gemini 2.5 Flash',
+      'gemini-3-flash-preview': 'Gemini 3 Flash',
+      'gemini-3.1-flash-lite-preview': 'Gemini 3.1 Flash Lite',
+      'gemini-3.1-pro-preview': 'Gemini 3.1 Pro',
+      'gemini-3.5-flash': 'Gemini 3.5 Flash',
+    };
+
+    final currentModel = controller.selectedModel.value;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: modelMap.containsKey(currentModel)
+                ? currentModel
+                : modelMap.keys.first,
+            icon: const Icon(Icons.smart_toy_outlined,
+                color: Colors.white, size: 18),
+            dropdownColor: Theme.of(context).colorScheme.surface,
+            style: const TextStyle(
+                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+            items: modelMap.entries.map((entry) {
+              return DropdownMenuItem<String>(
+                value: entry.key,
+                child: Text(
+                  entry.value,
+                  style: const TextStyle(color: Colors.black, fontSize: 13),
+                ),
+              );
+            }).toList(),
+            onChanged: (val) {
+              if (val != null) {
+                controller.saveModelToStorage(val);
+              }
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showGenerationDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -204,7 +315,8 @@ class Homepage extends StatelessWidget {
                 children: [
                   const Text(
                     'Generation Console',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
@@ -356,6 +468,9 @@ class Homepage extends StatelessWidget {
 
           controller.subjectController.text = firstQuestion.subjectId ?? "";
           controller.topicController.text = firstQuestion.topicId ?? "";
+
+          controller.saveSubjectToStorage(controller.subject.value);
+          controller.saveTopicToStorage(controller.topicID.value);
 
           for (var q in loadedQuestions) {
             q.body?.content = UtilFunctions.removeCommas(q.body!.content!);

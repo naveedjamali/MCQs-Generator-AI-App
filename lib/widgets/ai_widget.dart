@@ -82,11 +82,13 @@ class AiWidget extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 8.0),
                   child: Wrap(
                     alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     spacing: 8,
                     runSpacing: 4,
                     children: [
                       _buildCompactRadio('Essay First', false),
                       _buildCompactRadio('Direct MCQs', true),
+                      _buildLanguageChip(context),
                     ],
                   ),
                 )
@@ -227,6 +229,152 @@ class AiWidget extends StatelessWidget {
             ),
           ),
         ));
+  }
+
+  Widget _buildLanguageChip(BuildContext context) {
+    return Obx(() => InkWell(
+          onTap: () => _showLanguageSelectionSheet(context),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Theme.of(context)
+                  .colorScheme
+                  .primaryContainer
+                  .withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.language,
+                    size: 14, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 4),
+                Text(
+                  controller.selectedLanguage.value,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const Icon(Icons.arrow_drop_down, size: 16),
+              ],
+            ),
+          ),
+        ));
+  }
+
+  void _showLanguageSelectionSheet(BuildContext context) {
+    final languages = [
+      'English',
+      'Urdu',
+      'Sindhi',
+      'Arabic',
+      'Spanish',
+      'French',
+      'German',
+      'Hindi',
+      'Bengali',
+      'Pashto',
+      'Punjabi',
+      'Chinese',
+      'Russian',
+      'Turkish',
+      'Custom...',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(
+              leading: Icon(Icons.language, color: Colors.blue),
+              title: Text('Select MCQ Language',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+            const Divider(),
+            Expanded(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: languages.length,
+                itemBuilder: (context, index) {
+                  final lang = languages[index];
+                  final isSelected = controller.selectedLanguage.value == lang;
+                  return ListTile(
+                    leading: Icon(
+                      isSelected
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: isSelected ? Colors.blue : Colors.grey,
+                    ),
+                    title: Text(lang,
+                        style: TextStyle(
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      if (lang == 'Custom...') {
+                        _showCustomLanguageDialog(context);
+                      } else {
+                        controller.saveSelectedLanguage(lang);
+                      }
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCustomLanguageDialog(BuildContext context) {
+    final TextEditingController langController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter Custom Language'),
+        content: TextField(
+          controller: langController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'e.g. Japanese, Latin, Turkish...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final text = langController.text.trim();
+              if (text.isNotEmpty) {
+                controller.saveSelectedLanguage(text);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showHistoryMenu(BuildContext context) {

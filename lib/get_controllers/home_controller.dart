@@ -51,7 +51,8 @@ E.g., "Generate code-based MCQs for C++ programming. Some questions should ask f
   static const String defaultEssayInstructions = '''
 Subject: {subject}
 Topic: {topic}
-Generate a detailed essay on the given topic.
+Language: {language}
+Generate a detailed essay on the given topic in the specified language.
 essay length: 2000 words minimum.
 essay type: in-depth.
 The Essay includes: history, actions, reactions, parts, sub-parts, examples, formulas, measurements, structure, importance, inventions, discoveries, scientists, artists, uses, involvements, dates, types, subtypes, etc.
@@ -192,6 +193,53 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     useKatexConversion.value = sp.getBool("USE_KATEX_CONVERSION") ?? true;
     useDirectMcqGeneration.value = sp.getBool("USE_DIRECT_MCQ") ?? false;
     useAiToGenerateEssay.value = sp.getBool("USE_AI_ESSAY") ?? true;
+    selectedLanguage.value = sp.getString("TARGET_LANGUAGE") ?? "English";
+    selectedDifficulty.value = sp.getString("DIFFICULTY_LEVEL") ?? "Medium";
+
+    String savedSubject = sp.getString("SUBJECT_NAME") ?? "Computer Studies";
+    String savedTopic = sp.getString("TOPIC_NAME") ?? "Computer System";
+    subject.value = savedSubject;
+    topicID.value = savedTopic;
+    subjectController.text = savedSubject;
+    topicController.text = savedTopic;
+  }
+
+  Future<bool> saveSubjectToStorage(String text) async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    bool saved = await sp.setString("SUBJECT_NAME", text);
+    subject.value = text;
+    if (subjectController.text != text) {
+      subjectController.text = text;
+    }
+    update();
+    return saved;
+  }
+
+  Future<bool> saveTopicToStorage(String text) async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    bool saved = await sp.setString("TOPIC_NAME", text);
+    topicID.value = text;
+    if (topicController.text != text) {
+      topicController.text = text;
+    }
+    update();
+    return saved;
+  }
+
+  Future<bool> saveSelectedLanguage(String language) async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    bool saved = await sp.setString("TARGET_LANGUAGE", language);
+    selectedLanguage.value = language;
+    update();
+    return saved;
+  }
+
+  Future<bool> saveSelectedDifficulty(String difficulty) async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    bool saved = await sp.setString("DIFFICULTY_LEVEL", difficulty);
+    selectedDifficulty.value = difficulty;
+    update();
+    return saved;
   }
 
   Future<bool> saveCsvInstructionsToStorage(String instructions) async {
@@ -270,10 +318,14 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     await sp.remove("SPECIAL_INSTRUCTIONS");
     await sp.remove("KATEX_CUSTOM_INSTRUCTIONS");
     await sp.remove("ESSAY_INSTRUCTIONS");
+    await sp.remove("TARGET_LANGUAGE");
+    await sp.remove("DIFFICULTY_LEVEL");
     csvInstructions.value = defaultCsvInstructions;
     specialInstructions.value = defaultSpecialInstructions;
     katexConversionInstructions.value = defaultKatexConversionInstructions;
     essayInstructions.value = defaultEssayInstructions;
+    selectedLanguage.value = "English";
+    selectedDifficulty.value = "Medium";
     update();
   }
 
@@ -312,10 +364,13 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
   void addQuestions(BuildContext? context) {
     topicID.value = topicController.text.trim();
     subject.value = subjectController.text.trim();
+    saveSubjectToStorage(subject.value);
+    saveTopicToStorage(topicID.value);
     int addedQuestionCount = 0;
 
     String input = csvOutput.value.trim();
     List<Question> temp = [];
+    List<String> invalidRawRows = [];
 
     String delimiter = ',,,';
     // Split into lines first
@@ -461,7 +516,18 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
       q.status = 'ACTIVE';
 
       shuffleAnswers(q.answerOptions);
-      temp.add(q);
+
+      // Check if question has at least 1 correct answer
+      bool hasCorrectAnswer =
+          q.answerOptions?.any((a) => a.isCorrect ?? false) ?? false;
+
+      if (hasCorrectAnswer) {
+        temp.add(q);
+      } else {
+        if (q.rawCsv != null && q.rawCsv!.isNotEmpty) {
+          invalidRawRows.add(q.rawCsv!);
+        }
+      }
     }
 
     int questionsCountBefore = questions.length;
@@ -488,7 +554,162 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
       );
     }
 
+    if (invalidRawRows.isNotEmpty) {
+      reverifyAndAddQuestions(invalidRawRows, context);
+    }
+
     update();
+  }
+
+  Future<void> reverifyAndAddQuestions(
+      List<String> invalidRawRows, BuildContext? context) async {
+    if (invalidRawRows.isEmpty) return;
+
+    try {
+      setGeneratingResponse(true,
+          message:
+              'Re-verifying ${invalidRawRows.length} questions with 0 correct answers...');
+
+      final valIns = Content.multi(
+        validationInstructions
+            .split('\n')
+            .where((s) => s.trim().isNotEmpty)
+            .map((s) => TextPart(s.trim()))
+            .toList(),
+      );
+
+      String auditPrompt =
+          "AUDIT AND FIX THESE MCQS. ENSURE EVERY QUESTION HAS AN EXPLICIT CORRECT ANSWER IN COLUMN 6:\n\n${invalidRawRows.join('\n')}";
+
+      String? verifiedCsv = await askAI(valIns, auditPrompt);
+
+      if (verifiedCsv != null && verifiedCsv.isNotEmpty) {
+        _parseAndAddVerifiedQuestions(verifiedCsv, context);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Failed to reverify questions: $e');
+      }
+    } finally {
+      setGeneratingResponse(false);
+    }
+  }
+
+  void _parseAndAddVerifiedQuestions(
+      String csvContent, BuildContext? context) {
+    List<String> rawRows = csvContent.split('\n');
+    String delimiter = ',,,';
+    List<Question> validTemp = [];
+
+    for (String rawRow in rawRows) {
+      if (rawRow.trim().isEmpty) continue;
+      List<String> row = rawRow.split(delimiter).map((s) => s.trim()).toList();
+      if (row.length < 6) continue;
+
+      String firstCol = row[0].toLowerCase();
+      if (firstCol == "question" ||
+          firstCol.startsWith("example") ||
+          firstCol.contains("option1")) {
+        continue;
+      }
+
+      Question q = Question();
+      q.rawCsv = rawRow.trim();
+      String questionText = UtilFunctions.removeCommas(row[0]);
+
+      String? explanation;
+      if (row.length >= 7) {
+        explanation = UtilFunctions.removeCommas(row[6]);
+      }
+
+      if (explanation != null && explanation.isNotEmpty) {
+        if (!explanation.contains('[[EXPL]]')) {
+          explanation = '[[EXPL]] $explanation';
+        }
+        questionText += "\n\n$explanation";
+      }
+
+      Body qBody = Body(contentType: 'PLAIN', content: questionText);
+      q.body = qBody;
+      checkBodyForKatex(qBody);
+      q.answerOptions = [];
+
+      String correctVal = UtilFunctions.removeCommas(row[5]).toLowerCase();
+
+      List<String> optionsText = [];
+      for (int i = 1; i <= 4; i++) {
+        if (i < row.length) {
+          optionsText.add(UtilFunctions.removeCommas(row[i]));
+        }
+      }
+
+      int? correctOptionIndex;
+
+      for (int i = 0; i < optionsText.length; i++) {
+        if (optionsText[i].toLowerCase() == correctVal) {
+          correctOptionIndex = i;
+          break;
+        }
+      }
+
+      if (correctOptionIndex == null) {
+        if (correctVal == "a" || correctVal.startsWith("a)"))
+          correctOptionIndex = 0;
+        else if (correctVal == "b" || correctVal.startsWith("b)"))
+          correctOptionIndex = 1;
+        else if (correctVal == "c" || correctVal.startsWith("c)"))
+          correctOptionIndex = 2;
+        else if (correctVal == "d" || correctVal.startsWith("d)"))
+          correctOptionIndex = 3;
+      }
+
+      if (correctOptionIndex == null) {
+        for (int i = 0; i < optionsText.length; i++) {
+          int displayIndex = i + 1;
+          if (correctVal == "option $displayIndex" ||
+              correctVal == "$displayIndex") {
+            correctOptionIndex = i;
+            break;
+          }
+        }
+      }
+
+      for (int i = 0; i < optionsText.length; i++) {
+        AnswerOptions answer = AnswerOptions(
+          body: Body(content: optionsText[i], contentType: 'PLAIN'),
+          isCorrect: correctOptionIndex == i,
+        );
+        checkBodyForKatex(answer.body);
+        q.answerOptions?.add(answer);
+      }
+
+      bool hasCorrect =
+          q.answerOptions?.any((a) => a.isCorrect ?? false) ?? false;
+      if (hasCorrect) {
+        q.subjectId = subject.value;
+        q.topicId = topicID.value;
+        q.assignedPoints = 1;
+        q.status = 'ACTIVE';
+        shuffleAnswers(q.answerOptions);
+        validTemp.add(q);
+      }
+    }
+
+    if (validTemp.isNotEmpty) {
+      int countBefore = questions.length;
+      copyQuestions(validTemp, questions);
+      int added = questions.length - countBefore;
+
+      if (context != null && context.mounted && added > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$added questions re-verified and added successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      update();
+    }
   }
 
   bool containsAnswer(
@@ -821,7 +1042,8 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
       } else {
         String finalEssayInstructions = essayInstructions.value
             .replaceAll('{subject}', subject.value)
-            .replaceAll('{topic}', topicID.value);
+            .replaceAll('{topic}', topicID.value)
+            .replaceAll('{language}', selectedLanguage.value);
 
         final instructions = Content.multi(
           finalEssayInstructions
@@ -896,11 +1118,13 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
 
   void updateChapter(String text) {
     topicID.value = text;
+    saveTopicToStorage(text);
     update();
   }
 
   void updateSubject(String text) {
     subject.value = text;
+    saveSubjectToStorage(text);
     update();
   }
 
