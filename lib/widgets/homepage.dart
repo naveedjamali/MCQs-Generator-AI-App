@@ -11,12 +11,12 @@ import 'package:mcqs_generator_ai_app/models.dart';
 import 'package:mcqs_generator_ai_app/widgets/ai_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/app_drawer.dart';
 import 'package:mcqs_generator_ai_app/widgets/questions_list_widget.dart';
+import 'package:mcqs_generator_ai_app/widgets/search_history_panel_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/shuffle_questions_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/sort_questions_button_widget.dart';
 
 import 'delete_all_questions_widget.dart';
 import 'entries_widget.dart';
-import 'generating_questions_progress_indicator_widget.dart';
 
 class Homepage extends StatelessWidget {
   final AppController controller = Get.find();
@@ -93,7 +93,6 @@ class Homepage extends StatelessWidget {
                   ],
                 )),
           actions: [
-            GeneratingQuestionsProgressIndicator(),
             if (!isSmallScreen) ...[
               SortQuestionsButton(isAppBar: true),
               ShuffleQuestionsWidget(isAppBar: true),
@@ -175,66 +174,41 @@ class Homepage extends StatelessWidget {
                   ),
                 ),
               ),
-            // Questions List
+            // Main Content & Right Search History Panel
             Expanded(
-              child: QuestionsListWidget(),
-            ),
-            // Prompt Input at the bottom (Desktop only)
-            if (!isSmallScreen)
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, -2),
+              child: Row(
+                children: [
+                  // Left / Main Questions & Prompt Area
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: QuestionsListWidget(),
+                        ),
+                        if (!isSmallScreen)
+                          Container(
+                            padding: const EdgeInsets.all(8.0),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, -2),
+                                ),
+                              ],
+                            ),
+                            child: AiWidget(),
+                          ),
+                      ],
                     ),
-                  ],
-                ),
-                child: AiWidget(),
+                  ),
+                  // Right Panel (Desktop / Web only)
+                  if (!isSmallScreen) SearchHistoryPanelWidget(),
+                ],
               ),
+            ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAppBarDropdown<T>({
-    required BuildContext context,
-    required IconData icon,
-    required T value,
-    required List<T> items,
-    required ValueChanged<T?> onChanged,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<T>(
-            value: value,
-            icon: const Icon(Icons.arrow_drop_down,
-                color: Colors.white, size: 20),
-            dropdownColor: Theme.of(context).colorScheme.surface,
-            style: const TextStyle(
-                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
-            items: items.map((item) {
-              return DropdownMenuItem<T>(
-                value: item,
-                child: Text(
-                  item.toString(),
-                  style: const TextStyle(color: Colors.black, fontSize: 13),
-                ),
-              );
-            }).toList(),
-            onChanged: onChanged,
-          ),
         ),
       ),
     );

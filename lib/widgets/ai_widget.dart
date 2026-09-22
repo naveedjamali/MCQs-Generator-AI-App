@@ -498,15 +498,9 @@ class AiWidget extends StatelessWidget {
       controller.inputController.clear();
       controller.inputFocusNode.requestFocus();
     } else {
-      controller.addEntry(text);
-
-      try {
-        await controller.getAIDescription(text, context);
-        controller.inputController.clear();
-        controller.inputFocusNode.requestFocus();
-      } catch (e) {
-        // Errors are already handled inside getAIDescription
-      }
+      controller.inputController.clear();
+      controller.inputFocusNode.requestFocus();
+      controller.startSearchTask(text, context);
     }
   }
 }

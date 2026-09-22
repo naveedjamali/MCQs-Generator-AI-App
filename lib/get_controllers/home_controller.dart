@@ -125,9 +125,45 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
   late FocusNode inputFocus;
 
   RxList<Question> questions = <Question>[].obs;
-  RxList<Question> filteredQuestions = <Question>[].obs;
   RxList<String> entries = <String>[].obs;
   RxList<String> essays = <String>[].obs;
+
+  RxList<SearchTask> searchTasks = <SearchTask>[].obs;
+  RxString activeTaskFilterId = ''.obs;
+
+  void toggleTaskFilter(String taskId) {
+    if (activeTaskFilterId.value == taskId) {
+      activeTaskFilterId.value = '';
+    } else {
+      activeTaskFilterId.value = taskId;
+    }
+    update();
+  }
+
+  List<Question> get filteredQuestions {
+    List<Question> baseList = questions;
+
+    if (activeTaskFilterId.value.isNotEmpty) {
+      final task = searchTasks
+          .firstWhereOrNull((t) => t.id == activeTaskFilterId.value);
+      if (task != null) {
+        baseList = task.generatedQuestions;
+      }
+    }
+
+    if (queryText.value.isNotEmpty) {
+      String q = queryText.value.toLowerCase();
+      baseList = baseList.where((item) {
+        String questionText = item.body?.content?.toLowerCase() ?? '';
+        bool optionsMatch = item.answerOptions?.any((a) =>
+                a.body?.content?.toLowerCase().contains(q) ?? false) ??
+            false;
+        return questionText.contains(q) || optionsMatch;
+      }).toList();
+    }
+
+    return baseList;
+  }
 
   late TextEditingController inputController;
   late TextEditingController pdfPagesController;
@@ -361,7 +397,7 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     return saved;
   }
 
-  void addQuestions(BuildContext? context) {
+  void addQuestions(BuildContext? context, {SearchTask? task}) {
     topicID.value = topicController.text.trim();
     subject.value = subjectController.text.trim();
     saveSubjectToStorage(subject.value);
@@ -534,6 +570,14 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     copyQuestions(temp, questions);
     addedQuestionCount = questions.length - questionsCountBefore;
 
+    if (task != null) {
+      task.generatedQuestions.addAll(temp);
+      task.resultCount = task.generatedQuestions.length;
+      task.status = SearchTaskStatus.completed;
+      task.statusMessage = '${task.resultCount} MCQs generated';
+      searchTasks.refresh();
+    }
+
     if (context != null && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         snackBarAnimationStyle: const AnimationStyle(
@@ -555,20 +599,23 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     }
 
     if (invalidRawRows.isNotEmpty) {
-      reverifyAndAddQuestions(invalidRawRows, context);
+      reverifyAndAddQuestions(invalidRawRows, context, task: task);
     }
 
     update();
   }
 
   Future<void> reverifyAndAddQuestions(
-      List<String> invalidRawRows, BuildContext? context) async {
+      List<String> invalidRawRows, BuildContext? context,
+      {SearchTask? task}) async {
     if (invalidRawRows.isEmpty) return;
 
     try {
       setGeneratingResponse(true,
           message:
               'Re-verifying ${invalidRawRows.length} questions with 0 correct answers...');
+      task?.statusMessage = 'Re-verifying questions with 0 correct answers...';
+      searchTasks.refresh();
 
       final valIns = Content.multi(
         validationInstructions
@@ -584,7 +631,7 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
       String? verifiedCsv = await askAI(valIns, auditPrompt);
 
       if (verifiedCsv != null && verifiedCsv.isNotEmpty) {
-        _parseAndAddVerifiedQuestions(verifiedCsv, context);
+        _parseAndAddVerifiedQuestions(verifiedCsv, context, task: task);
       }
     } catch (e) {
       if (kDebugMode) {
@@ -596,7 +643,8 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
   }
 
   void _parseAndAddVerifiedQuestions(
-      String csvContent, BuildContext? context) {
+      String csvContent, BuildContext? context,
+      {SearchTask? task}) {
     List<String> rawRows = csvContent.split('\n');
     String delimiter = ',,,';
     List<Question> validTemp = [];
@@ -699,6 +747,14 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
       int countBefore = questions.length;
       copyQuestions(validTemp, questions);
       int added = questions.length - countBefore;
+
+      if (task != null) {
+        task.generatedQuestions.addAll(validTemp);
+        task.resultCount = task.generatedQuestions.length;
+        task.status = SearchTaskStatus.completed;
+        task.statusMessage = '${task.resultCount} MCQs generated';
+        searchTasks.refresh();
+      }
 
       if (context != null && context.mounted && added > 0) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -822,25 +878,46 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     if (kDebugMode) {
       print('Prompt: $prompt');
     } // Print the value of prompt
-    try {
-      final response = await model.generateContent([Content.text(prompt)]);
 
-      if (response.text == null) {
-        throw 'The AI returned an empty response. Please try again.';
-      }
+    int retries = 0;
+    const maxRetries = 3;
 
-      if (kDebugMode) {
-        print(response.text);
+    while (true) {
+      try {
+        final response = await model.generateContent([Content.text(prompt)]);
+
+        if (response.text == null) {
+          throw 'The AI returned an empty response. Please try again.';
+        }
+
+        if (kDebugMode) {
+          print(response.text);
+        }
+        return response.text;
+      } catch (error) {
+        String errStr = error.toString();
+        bool is503 = errStr.contains('503') ||
+            errStr.toLowerCase().contains('service unavailable') ||
+            errStr.toLowerCase().contains('unavailable');
+
+        if (is503 && retries < maxRetries) {
+          retries++;
+          if (kDebugMode) {
+            print(
+                'AI Error 503 Service Unavailable. Automatically restarting search attempt $retries of $maxRetries...');
+          }
+          await Future.delayed(Duration(seconds: retries * 2));
+          continue;
+        }
+
+        if (kDebugMode) print('AI Error: $error');
+        rethrow;
       }
-      return response.text;
-    } catch (error) {
-      if (kDebugMode) print('AI Error: $error');
-      rethrow;
     }
   }
 
   Future<String?> getCsvResponse(String description,
-      {bool isDirect = false}) async {
+      {bool isDirect = false, SearchTask? task}) async {
     String count = (useAiToGenerateEssay.value || useDirectMcqGeneration.value)
         ? '30'
         : 'minimum 60';
@@ -865,11 +942,22 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
           .map((s) => TextPart(s.trim()))
           .toList(),
     );
+
+    if (task != null) {
+      task.statusMessage = 'Generating MCQs with Gemini AI...';
+      searchTasks.refresh();
+    }
+    setGeneratingResponse(true, message: 'Generating MCQs with Gemini AI...');
+
     String? csvResultRaw = await askAI(ins, description);
 
     if (csvResultRaw == null || csvResultRaw.isEmpty) return null;
 
     // STEP 2: VALIDATION & VERIFICATION
+    if (task != null) {
+      task.statusMessage = 'Verifying and validating MCQs...';
+      searchTasks.refresh();
+    }
     setGeneratingResponse(true, message: 'Verifying and validating MCQs...');
 
     final valIns = Content.multi(
@@ -887,6 +975,10 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     if (!useKatexConversion.value) return validatedCsv;
 
     // STEP 3: KATEX CONVERSION
+    if (task != null) {
+      task.statusMessage = 'Formatting MCQs for KaTeX...';
+      searchTasks.refresh();
+    }
     setGeneratingResponse(true, message: 'Formatting MCQs for KaTeX...');
 
     final katexIns = Content.multi(
@@ -1003,16 +1095,53 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     }
   }
 
-  Future<void> getAIDescription(String text, BuildContext context) async {
+  Future<void> startSearchTask(String text, BuildContext context) async {
+    final task = SearchTask(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      searchText: text,
+      difficulty: selectedDifficulty.value,
+      language: selectedLanguage.value,
+      isDirect: useDirectMcqGeneration.value,
+      status: SearchTaskStatus.inProgress,
+      statusMessage: 'Starting search...',
+    );
+
+    searchTasks.insert(0, task);
+    addEntry(text);
+
+    try {
+      await getAIDescription(text, context, task: task);
+    } catch (e) {
+      task.status = SearchTaskStatus.failed;
+      task.errorMessage = e.toString().replaceFirst('Exception: ', '');
+      task.statusMessage = 'Search failed';
+      searchTasks.refresh();
+    }
+  }
+
+  void reRunTask(SearchTask task, BuildContext context) {
+    inputController.clear();
+    inputFocusNode.requestFocus();
+    saveSelectedDifficulty(task.difficulty);
+    saveSelectedLanguage(task.language);
+    startSearchTask(task.searchText, context);
+  }
+
+  Future<void> getAIDescription(String text, BuildContext context,
+      {SearchTask? task}) async {
     setGeneratingResponse(true, message: 'Generating MCQs with Gemini AI...');
+    task?.statusMessage = 'Generating MCQs with Gemini AI...';
+    searchTasks.refresh();
+
     try {
       if (useDirectMcqGeneration.value) {
         String directPrompt =
             "Subject: ${subject.value}\nTopic: ${topicID.value}\nContext/Instructions: $text";
-        String? csvResponse = await getCsvResponse(directPrompt, isDirect: true);
+        String? csvResponse =
+            await getCsvResponse(directPrompt, isDirect: true, task: task);
         if (csvResponse != null) {
           setCSV(csvResponse);
-          addQuestions(context);
+          addQuestions(context, task: task);
         }
       } else if (isPdfMode.value ||
           isManualEssayMode.value ||
@@ -1020,7 +1149,10 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
         String fullPrompt = text;
 
         if (isPdfMode.value) {
-          // Wrap text with PDF specific context if provided
+          if (task != null) {
+            task.statusMessage = 'Extracting PDF text context...';
+            searchTasks.refresh();
+          }
           String pdfContext =
               "SOURCE MATERIAL (Extracted from PDF):\n$text\n\n";
           if (pdfInstructionsController.text.trim().isNotEmpty) {
@@ -1034,12 +1166,15 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
           fullPrompt = pdfContext;
         }
 
-        String? csvResponse = await getCsvResponse(fullPrompt);
+        String? csvResponse = await getCsvResponse(fullPrompt, task: task);
         if (csvResponse != null) {
           setCSV(csvResponse);
-          addQuestions(context);
+          addQuestions(context, task: task);
         }
       } else {
+        task?.statusMessage = 'Generating essay first...';
+        searchTasks.refresh();
+
         String finalEssayInstructions = essayInstructions.value
             .replaceAll('{subject}', subject.value)
             .replaceAll('{topic}', topicID.value)
@@ -1056,10 +1191,14 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
         String? generatedDescription = await askAI(instructions, text);
 
         if (generatedDescription != null) {
-          String? csvFromEssay = await getCsvResponse(generatedDescription);
+          task?.statusMessage = 'Converting essay to MCQs...';
+          searchTasks.refresh();
+
+          String? csvFromEssay =
+              await getCsvResponse(generatedDescription, task: task);
           if (csvFromEssay != null) {
             setCSV(csvFromEssay);
-            addQuestions(context);
+            addQuestions(context, task: task);
           }
         }
       }
@@ -1079,6 +1218,11 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
       } else {
         errorMessage = e.toString();
       }
+
+      task?.status = SearchTaskStatus.failed;
+      task?.errorMessage = errorMessage;
+      task?.statusMessage = 'Search failed';
+      searchTasks.refresh();
 
       if (context.mounted) {
         showDialog(

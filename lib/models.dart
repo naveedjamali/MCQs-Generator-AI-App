@@ -1,3 +1,34 @@
+enum SearchTaskStatus { inProgress, completed, failed }
+
+class SearchTask {
+  final String id;
+  final String searchText;
+  final String difficulty;
+  final String language;
+  final bool isDirect;
+  SearchTaskStatus status;
+  String statusMessage;
+  String? errorMessage;
+  int resultCount;
+  List<Question> generatedQuestions;
+  final DateTime timestamp;
+
+  SearchTask({
+    required this.id,
+    required this.searchText,
+    required this.difficulty,
+    required this.language,
+    required this.isDirect,
+    this.status = SearchTaskStatus.inProgress,
+    this.statusMessage = 'In progress...',
+    this.errorMessage,
+    this.resultCount = 0,
+    List<Question>? generatedQuestions,
+    DateTime? timestamp,
+  })  : generatedQuestions = generatedQuestions ?? [],
+        timestamp = timestamp ?? DateTime.now();
+}
+
 class Question {
   Body? body;
   String? status;
