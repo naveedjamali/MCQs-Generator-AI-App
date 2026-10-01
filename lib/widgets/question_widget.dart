@@ -257,31 +257,52 @@ class _QuestionWidgetState extends State<QuestionWidget> {
           ),
           if (!isSmallScreen) ...[
             // PLAIN/KATEX Toggle
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  isKatex ? 'KATEX' : 'PLAIN',
-                  style:
-                      const TextStyle(fontSize: 8, fontWeight: FontWeight.bold),
-                ),
-                Transform.scale(
-                  scale: 0.7,
-                  child: Switch(
-                    value: isKatex,
-                    onChanged: (value) {
-                      setState(() {
-                        final newType = value ? "KATEX" : "PLAIN";
-                        widget.question.body?.contentType = newType;
-                        // Also update all answers for consistency
-                        for (var opt in widget.question.answerOptions ?? []) {
-                          opt.body?.contentType = newType;
-                        }
-                      });
-                    },
+            InkWell(
+              onTap: () {
+                setState(() {
+                  final newType = isKatex ? "PLAIN" : "KATEX";
+                  widget.question.body?.contentType = newType;
+                  for (var opt in widget.question.answerOptions ?? []) {
+                    opt.body?.contentType = newType;
+                  }
+                });
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color:
+                      isKatex ? Colors.purple.shade50 : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isKatex
+                        ? Colors.purple.shade300
+                        : Colors.grey.shade300,
                   ),
                 ),
-              ],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.functions,
+                      size: 12,
+                      color: isKatex ? Colors.purple : Colors.grey,
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      isKatex ? 'KATEX' : 'PLAIN',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: isKatex
+                            ? Colors.purple.shade800
+                            : Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
             IconButton(
               onPressed: () => copyText(questionText),
@@ -397,27 +418,40 @@ class _QuestionWidgetState extends State<QuestionWidget> {
                 ),
                 if (!isSmallScreen) ...[
                   // Individual Answer KaTeX Switch
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        isKatex ? 'KATEX' : 'PLAIN',
-                        style: const TextStyle(
-                            fontSize: 6, fontWeight: FontWeight.bold),
-                      ),
-                      Transform.scale(
-                        scale: 0.5,
-                        child: Switch(
-                          value: isKatex,
-                          onChanged: (value) {
-                            setState(() {
-                              widget.question.answerOptions?[index].body
-                                  ?.contentType = value ? "KATEX" : "PLAIN";
-                            });
-                          },
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        final newType = isKatex ? "PLAIN" : "KATEX";
+                        widget.question.answerOptions?[index].body
+                            ?.contentType = newType;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isKatex
+                            ? Colors.purple.shade50
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isKatex
+                              ? Colors.purple.shade300
+                              : Colors.grey.shade300,
                         ),
                       ),
-                    ],
+                      child: Text(
+                        isKatex ? 'KATEX' : 'PLAIN',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: isKatex
+                              ? Colors.purple.shade800
+                              : Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
                   ),
                   IconButton(
                     onPressed: () {
