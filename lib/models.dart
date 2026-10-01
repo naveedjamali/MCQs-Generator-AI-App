@@ -12,6 +12,7 @@ class SearchTask {
   int resultCount;
   List<Question> generatedQuestions;
   final DateTime timestamp;
+  bool isCancelled;
 
   SearchTask({
     required this.id,
@@ -25,8 +26,16 @@ class SearchTask {
     this.resultCount = 0,
     List<Question>? generatedQuestions,
     DateTime? timestamp,
+    this.isCancelled = false,
   })  : generatedQuestions = generatedQuestions ?? [],
         timestamp = timestamp ?? DateTime.now();
+
+  void cancel() {
+    isCancelled = true;
+    status = SearchTaskStatus.failed;
+    statusMessage = 'Stopped';
+    errorMessage = 'Generation stopped by user.';
+  }
 }
 
 class Question {

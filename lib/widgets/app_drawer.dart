@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:mcqs_generator_ai_app/widgets/api_key_widget.dart';
 
 import 'package:mcqs_generator_ai_app/widgets/chapter_name_textfield_widget.dart';
+import 'package:mcqs_generator_ai_app/widgets/exam_textfield_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/show_answers_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/show_questions_with_four_answers_only_widget.dart';
 import 'package:mcqs_generator_ai_app/widgets/subject_name_textfield_widget.dart';
@@ -43,6 +44,8 @@ class AppDrawer extends StatefulWidget {
 class _AppDrawerState extends State<AppDrawer> {
   @override
   Widget build(BuildContext context) {
+    final isSmallScreen = MediaQuery.of(context).size.width <= 600;
+
     return Drawer(
       child: Column(
         children: [
@@ -51,20 +54,24 @@ class _AppDrawerState extends State<AppDrawer> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               children: [
-                _buildSectionTitle('Project Info'),
-                _buildModernCard([
-                  Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      children: [
-                        SubjectNameTextFieldWidget(),
-                        const SizedBox(height: 12),
-                        ChapterNameTextFieldWidget(),
-                      ],
+                if (isSmallScreen) ...[
+                  _buildSectionTitle('Project Info'),
+                  _buildModernCard([
+                    Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        children: [
+                          SubjectNameTextFieldWidget(),
+                          const SizedBox(height: 12),
+                          ChapterNameTextFieldWidget(),
+                          const SizedBox(height: 12),
+                          ExamTextFieldWidget(),
+                        ],
+                      ),
                     ),
-                  ),
-                ]),
-                const SizedBox(height: 16),
+                  ]),
+                  const SizedBox(height: 16),
+                ],
                 _buildSectionTitle('Display Filters'),
                 _buildModernCard([
                   ShowAnswers(),
@@ -341,9 +348,14 @@ class _AppDrawerState extends State<AppDrawer> {
                     title: 'Reset AI Instructions',
                     onTap: () {
                       widget.controller.resetInstructions();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Instructions reset to default')),
+                      Get.snackbar(
+                        'Reset',
+                        'Instructions reset to default',
+                        snackPosition: SnackPosition.TOP,
+                        backgroundColor: Colors.blue.shade600,
+                        colorText: Colors.white,
+                        margin: const EdgeInsets.all(12),
+                        duration: const Duration(seconds: 2),
                       );
                     },
                   ),
@@ -690,23 +702,15 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   void showQuestionsCopiedMessageOnScreen(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      snackBarAnimationStyle: const AnimationStyle(
-          duration: Duration(seconds: 1),
-          curve: Curves.easeIn,
-          reverseCurve: Curves.bounceIn,
-          reverseDuration: Duration(seconds: 1)),
-      SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text(
-            '${widget.controller.questions.length} questions copied on the clipboard'),
-        backgroundColor: Colors.green,
-        padding: const EdgeInsets.all(16),
-        behavior: SnackBarBehavior.floating,
-        clipBehavior: Clip.antiAliasWithSaveLayer,
-        dismissDirection: DismissDirection.horizontal,
-        showCloseIcon: true,
-      ),
+    Get.snackbar(
+      'Copied',
+      '${widget.controller.questions.length} questions copied to clipboard',
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: Colors.green.shade600,
+      colorText: Colors.white,
+      icon: const Icon(Icons.copy_all, color: Colors.white),
+      margin: const EdgeInsets.all(12),
+      duration: const Duration(seconds: 2),
     );
   }
 }

@@ -430,8 +430,14 @@ class AiWidget extends StatelessWidget {
   void _showHistoryMenu(BuildContext context) {
     final history = controller.entries;
     if (history.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No generation history yet')),
+      Get.snackbar(
+        'History Empty',
+        'No generation history yet',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.blue.shade600,
+        colorText: Colors.white,
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 2),
       );
       return;
     }
@@ -481,8 +487,14 @@ class AiWidget extends StatelessWidget {
     }
 
     if (text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter text first')),
+      Get.snackbar(
+        'Input Required',
+        'Please enter a topic or text first',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.orange.shade800,
+        colorText: Colors.white,
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 2),
       );
       return;
     }

@@ -134,21 +134,56 @@ class SearchHistoryPanelWidget extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Row: Status Icon & Badge + Re-run Button
+                // Top Row: Status Icon & Badge + Action Buttons (Stop / Re-run / Delete)
                 Row(
                   children: [
                     _buildStatusBadge(task),
                     const Spacer(),
-                    Tooltip(
-                      message: 'Run search again',
-                      child: IconButton(
-                        icon: const Icon(Icons.replay, size: 18),
-                        color: colorScheme.primary,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        onPressed: () => controller.reRunTask(task, context),
+                    if (task.status == SearchTaskStatus.inProgress) ...[
+                      Tooltip(
+                        message: 'Stop generating MCQs',
+                        child: TextButton.icon(
+                          onPressed: () => controller.stopSearchTask(task),
+                          icon: const Icon(Icons.stop_circle_outlined,
+                              size: 16, color: Colors.red),
+                          label: const Text(
+                            'Stop',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold),
+                          ),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
                       ),
-                    ),
+                    ] else ...[
+                      Tooltip(
+                        message: 'Run search again',
+                        child: IconButton(
+                          icon: const Icon(Icons.replay, size: 18),
+                          color: colorScheme.primary,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () => controller.reRunTask(task, context),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Tooltip(
+                        message: 'Delete search task & MCQs',
+                        child: IconButton(
+                          icon: const Icon(Icons.delete_outline,
+                              size: 18, color: Colors.red),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () => controller.deleteSearchTask(task),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 6),

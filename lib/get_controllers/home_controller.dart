@@ -21,6 +21,7 @@ class AppController extends GetxController {
   RxString csvOutput = ''.obs;
   RxString topicID = 'Computer System'.obs;
   RxString subject = 'Computer Studies'.obs;
+  RxString targetExam = 'MDCAT'.obs;
 
   RxString selectedLanguage = "English".obs;
   RxString selectedDifficulty = "Medium".obs;
@@ -29,6 +30,7 @@ class AppController extends GetxController {
 MOST IMPORTANT: Generate MCQs from the given text only. 
 DO NOT include any header row, introductory text, or conclusion.
 Output ONLY the CSV data.
+Target Exam: {exam}
 Language: {language}
 Difficulty Level: {difficulty}
 Generate clear and concise {count} MCQs in the csv format.
@@ -51,8 +53,9 @@ E.g., "Generate code-based MCQs for C++ programming. Some questions should ask f
   static const String defaultEssayInstructions = '''
 Subject: {subject}
 Topic: {topic}
+Target Exam: {exam}
 Language: {language}
-Generate a detailed essay on the given topic in the specified language.
+Generate a detailed essay on the given topic in the specified language, suitable for students preparing for the target exam.
 essay length: 2000 words minimum.
 essay type: in-depth.
 The Essay includes: history, actions, reactions, parts, sub-parts, examples, formulas, measurements, structure, importance, inventions, discoveries, scientists, artists, uses, involvements, dates, types, subtypes, etc.
@@ -119,6 +122,12 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
   final isFilteringFourAnswers = false.obs;
   final showSearchField = false.obs;
   final showAiInput = true.obs;
+  final showSearchHistoryPanel = true.obs;
+
+  void toggleSearchHistoryPanel() {
+    showSearchHistoryPanel.toggle();
+    update();
+  }
 
   late FocusNode topicFocus;
   late FocusNode subjectFocus;
@@ -172,7 +181,10 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
 
   late TextEditingController topicController;
   late TextEditingController subjectController;
+  late TextEditingController examController;
   late TextEditingController searchController;
+
+  late FocusNode examFocus;
 
   // Following lines control the scroll of output questions list.
   late ItemScrollController itemScrollController;
@@ -190,6 +202,9 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     subjectController = TextEditingController(
       text: 'Computer Studies',
     );
+    examController = TextEditingController(
+      text: 'MDCAT',
+    );
     searchController = TextEditingController(text: '');
     pdfPagesController = TextEditingController(text: '');
     pdfInstructionsController = TextEditingController(text: '');
@@ -201,6 +216,7 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     inputFocusNode = FocusNode();
     topicFocus = FocusNode();
     subjectFocus = FocusNode();
+    examFocus = FocusNode();
     inputFocus = FocusNode();
 
     scrollOffsetController = ScrollOffsetController();
@@ -234,10 +250,30 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
 
     String savedSubject = sp.getString("SUBJECT_NAME") ?? "Computer Studies";
     String savedTopic = sp.getString("TOPIC_NAME") ?? "Computer System";
+    String savedExam = sp.getString("EXAM_NAME") ?? "MDCAT";
     subject.value = savedSubject;
     topicID.value = savedTopic;
+    targetExam.value = savedExam;
     subjectController.text = savedSubject;
     topicController.text = savedTopic;
+    examController.text = savedExam;
+  }
+
+  Future<bool> saveExamToStorage(String text) async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    bool saved = await sp.setString("EXAM_NAME", text);
+    targetExam.value = text;
+    if (examController.text != text) {
+      examController.text = text;
+    }
+    update();
+    return saved;
+  }
+
+  void updateExam(String text) {
+    targetExam.value = text;
+    saveExamToStorage(text);
+    update();
   }
 
   Future<bool> saveSubjectToStorage(String text) async {
@@ -578,23 +614,16 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
       searchTasks.refresh();
     }
 
-    if (context != null && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        snackBarAnimationStyle: const AnimationStyle(
-            duration: Duration(seconds: 1),
-            curve: Curves.easeIn,
-            reverseCurve: Curves.bounceIn,
-            reverseDuration: Duration(seconds: 1)),
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('$addedQuestionCount new questions added successfully'),
-          backgroundColor: Colors.green,
-          padding: const EdgeInsets.all(16),
-          behavior: SnackBarBehavior.floating,
-          clipBehavior: Clip.antiAliasWithSaveLayer,
-          dismissDirection: DismissDirection.horizontal,
-          showCloseIcon: true,
-        ),
+    if (context != null) {
+      Get.snackbar(
+        'Success',
+        '$addedQuestionCount new questions added successfully',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.green.shade600,
+        colorText: Colors.white,
+        icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 2),
       );
     }
 
@@ -756,12 +785,16 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
         searchTasks.refresh();
       }
 
-      if (context != null && context.mounted && added > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$added questions re-verified and added successfully'),
-            backgroundColor: Colors.green,
-          ),
+      if (context != null && added > 0) {
+        Get.snackbar(
+          'Re-verified',
+          '$added questions re-verified and added successfully',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.green.shade600,
+          colorText: Colors.white,
+          icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+          margin: const EdgeInsets.all(12),
+          duration: const Duration(seconds: 2),
         );
       }
       update();
@@ -852,7 +885,8 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     update();
   }
 
-  Future<String?> askAI(Content instructions, String query) async {
+  Future<String?> askAI(Content instructions, String query,
+      {SearchTask? task}) async {
     // Access your API key as an environment variable
     String modelName = selectedModel.value;
 
@@ -869,7 +903,6 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
       generationConfig: GenerationConfig(
         temperature: 1,
       ),
-      // systemInstruction: Content.multi([TextPart('')]),
       systemInstruction: instructions,
     );
 
@@ -877,14 +910,20 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
 
     if (kDebugMode) {
       print('Prompt: $prompt');
-    } // Print the value of prompt
+    }
 
     int retries = 0;
     const maxRetries = 3;
 
     while (true) {
+      if (task?.isCancelled == true) {
+        throw 'Generation stopped by user.';
+      }
       try {
         final response = await model.generateContent([Content.text(prompt)]);
+        if (task?.isCancelled == true) {
+          throw 'Generation stopped by user.';
+        }
 
         if (response.text == null) {
           throw 'The AI returned an empty response. Please try again.';
@@ -895,6 +934,11 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
         }
         return response.text;
       } catch (error) {
+        if (task?.isCancelled == true ||
+            error.toString().contains('Generation stopped by user')) {
+          rethrow;
+        }
+
         String errStr = error.toString();
         bool is503 = errStr.contains('503') ||
             errStr.toLowerCase().contains('service unavailable') ||
@@ -918,6 +962,8 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
 
   Future<String?> getCsvResponse(String description,
       {bool isDirect = false, SearchTask? task}) async {
+    if (task?.isCancelled == true) throw 'Generation stopped by user.';
+
     String count = (useAiToGenerateEssay.value || useDirectMcqGeneration.value)
         ? '30'
         : 'minimum 60';
@@ -932,6 +978,7 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
 
     String finalInstructions = combinedInstructions
         .replaceAll('{count}', count)
+        .replaceAll('{exam}', targetExam.value)
         .replaceAll('{language}', selectedLanguage.value)
         .replaceAll('{difficulty}', selectedDifficulty.value);
 
@@ -949,7 +996,8 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     }
     setGeneratingResponse(true, message: 'Generating MCQs with Gemini AI...');
 
-    String? csvResultRaw = await askAI(ins, description);
+    String? csvResultRaw = await askAI(ins, description, task: task);
+    if (task?.isCancelled == true) throw 'Generation stopped by user.';
 
     if (csvResultRaw == null || csvResultRaw.isEmpty) return null;
 
@@ -969,7 +1017,8 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     );
 
     String? validatedCsv =
-        await askAI(valIns, "AUDIT THESE MCQS:\n\n$csvResultRaw");
+        await askAI(valIns, "AUDIT THESE MCQS:\n\n$csvResultRaw", task: task);
+    if (task?.isCancelled == true) throw 'Generation stopped by user.';
 
     if (validatedCsv == null || validatedCsv.isEmpty) return null;
     if (!useKatexConversion.value) return validatedCsv;
@@ -990,7 +1039,8 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     );
 
     String? katexCsv =
-        await askAI(katexIns, "CONVERT THESE TO KATEX:\n\n$validatedCsv");
+        await askAI(katexIns, "CONVERT THESE TO KATEX:\n\n$validatedCsv", task: task);
+    if (task?.isCancelled == true) throw 'Generation stopped by user.';
     return katexCsv;
   }
 
@@ -1027,17 +1077,29 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
 
         if (extractedText.trim().isNotEmpty) {
           inputController.text = extractedText;
-          Get.snackbar('Success',
-              'Extracted ${extractedText.length} characters from PDF',
-              backgroundColor: Colors.green.withAlpha(100));
+          Get.snackbar(
+            'Success',
+            'Extracted ${extractedText.length} characters from PDF',
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.green.shade600,
+            colorText: Colors.white,
+            margin: const EdgeInsets.all(12),
+            duration: const Duration(seconds: 2),
+          );
         } else {
           throw 'No text could be extracted from this PDF. It might be a scanned document (try Image OCR mode instead).';
         }
       }
     } catch (e) {
-      Get.snackbar('Extraction Error', '$e',
-          backgroundColor: Colors.red.withAlpha(100),
-          duration: const Duration(seconds: 5));
+      Get.snackbar(
+        'Extraction Error',
+        '$e',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.red.shade600,
+        colorText: Colors.white,
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 4),
+      );
     } finally {
       setGeneratingResponse(false);
     }
@@ -1119,6 +1181,36 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     }
   }
 
+  void stopSearchTask(SearchTask task) {
+    task.cancel();
+    searchTasks.refresh();
+    setGeneratingResponse(false);
+  }
+
+  void deleteSearchTask(SearchTask task) {
+    if (activeTaskFilterId.value == task.id) {
+      activeTaskFilterId.value = '';
+    }
+
+    if (task.generatedQuestions.isNotEmpty) {
+      questions.removeWhere((q) => task.generatedQuestions.contains(q));
+    }
+
+    searchTasks.removeWhere((t) => t.id == task.id);
+
+    Get.snackbar(
+      'Deleted',
+      'Search task and its ${task.resultCount} MCQs removed',
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: Colors.red.shade600,
+      colorText: Colors.white,
+      margin: const EdgeInsets.all(12),
+      duration: const Duration(seconds: 2),
+    );
+
+    update();
+  }
+
   void reRunTask(SearchTask task, BuildContext context) {
     inputController.clear();
     inputFocusNode.requestFocus();
@@ -1136,7 +1228,7 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     try {
       if (useDirectMcqGeneration.value) {
         String directPrompt =
-            "Subject: ${subject.value}\nTopic: ${topicID.value}\nContext/Instructions: $text";
+            "Subject: ${subject.value}\nTopic: ${topicID.value}\nTarget Exam: ${targetExam.value}\nContext/Instructions: $text";
         String? csvResponse =
             await getCsvResponse(directPrompt, isDirect: true, task: task);
         if (csvResponse != null) {
@@ -1178,6 +1270,7 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
         String finalEssayInstructions = essayInstructions.value
             .replaceAll('{subject}', subject.value)
             .replaceAll('{topic}', topicID.value)
+            .replaceAll('{exam}', targetExam.value)
             .replaceAll('{language}', selectedLanguage.value);
 
         final instructions = Content.multi(
@@ -1188,7 +1281,8 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
               .toList(),
         );
 
-        String? generatedDescription = await askAI(instructions, text);
+        String? generatedDescription = await askAI(instructions, text, task: task);
+        if (task?.isCancelled == true) throw 'Generation stopped by user.';
 
         if (generatedDescription != null) {
           task?.statusMessage = 'Converting essay to MCQs...';
@@ -1203,6 +1297,15 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
         }
       }
     } catch (e) {
+      if (task?.isCancelled == true ||
+          e.toString().contains('Generation stopped by user')) {
+        task?.status = SearchTaskStatus.failed;
+        task?.statusMessage = 'Stopped';
+        task?.errorMessage = 'Generation stopped by user.';
+        searchTasks.refresh();
+        return;
+      }
+
       String errorMessage = 'An unexpected error occurred';
 
       if (e.toString().contains('key not found') ||
@@ -1227,7 +1330,7 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
       if (context.mounted) {
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
+          builder: (dialogContext) => AlertDialog(
             title: const Row(
               children: [
                 Icon(Icons.error_outline, color: Colors.red),
@@ -1237,13 +1340,19 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
             ),
             content: Text(errorMessage),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
+              FilledButton(
+                autofocus: true,
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                  inputFocusNode.requestFocus();
+                },
                 child: const Text('Dismiss'),
               ),
             ],
           ),
-        );
+        ).then((_) {
+          inputFocusNode.requestFocus();
+        });
       }
     } finally {
       setGeneratingResponse(false);
@@ -1272,7 +1381,7 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     update();
   }
 
-  void setShowAnswers(value) {
+  void setShowAnswers(bool value) {
     showAnswers.value = value;
     update();
   }
@@ -1308,7 +1417,7 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     update();
   }
 
-  void setFilteringFourOptions(value) {
+  void setFilteringFourOptions(bool value) {
     isFilteringFourAnswers.value = value;
     if (isFilteringFourAnswers.value) {
       filteredQuestions.clear();

@@ -42,56 +42,86 @@ class Homepage extends StatelessWidget {
           showHistory: () => _showHistoryDialog(context),
         ),
         appBar: AppBar(
-          title: Obx(() => controller.showSearchField.value
-              ? TextField(
-                  controller: controller.searchController,
-                  autofocus: true,
-                  style: const TextStyle(color: Colors.white),
-                  cursorColor: Colors.white,
-                  decoration: InputDecoration(
-                    hintText: 'Filter questions...',
-                    hintStyle:
-                        TextStyle(color: Colors.white.withValues(alpha: 0.6)),
-                    border: InputBorder.none,
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.clear, color: Colors.white),
-                      onPressed: () {
-                        controller.searchController.clear();
-                        controller.queryText.value = '';
-                      },
+          title: Obx(
+            () => controller.showSearchField.value
+                ? TextField(
+                    controller: controller.searchController,
+                    autofocus: true,
+                    style: const TextStyle(color: Colors.white),
+                    cursorColor: Colors.white,
+                    decoration: InputDecoration(
+                      hintText: 'Filter questions...',
+                      hintStyle: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.6)),
+                      border: InputBorder.none,
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.clear, color: Colors.white),
+                        onPressed: () {
+                          controller.searchController.clear();
+                          controller.queryText.value = '';
+                        },
+                      ),
                     ),
+                    onChanged: (value) {
+                      controller.queryText.value = value;
+                      controller.setSearchMode(value.isNotEmpty);
+                    },
+                  )
+                : Row(
+                    children: [
+                      if (!isSmallScreen) ...[
+                        const Text(
+                          "MCQs Gen",
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildAppBarTextField(
+                          context: context,
+                          label: 'Subject',
+                          controller: controller.subjectController,
+                          focusNode: controller.subjectFocus,
+                          onChanged: (val) => controller.updateSubject(val),
+                          width: 130,
+                        ),
+                        _buildAppBarTextField(
+                          context: context,
+                          label: 'Chapter/Topic',
+                          controller: controller.topicController,
+                          focusNode: controller.topicFocus,
+                          onChanged: (val) => controller.updateChapter(val),
+                          width: 130,
+                        ),
+                        _buildAppBarTextField(
+                          context: context,
+                          label: 'Exam',
+                          controller: controller.examController,
+                          focusNode: controller.examFocus,
+                          onChanged: (val) => controller.updateExam(val),
+                          width: 100,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Obx(() => Text(
+                              '${controller.questions.length}',
+                              style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold),
+                            )),
+                      ),
+                    ],
                   ),
-                  onChanged: (value) {
-                    controller.queryText.value = value;
-                    controller.setSearchMode(value.isNotEmpty);
-                  },
-                )
-              : Row(
-                  children: [
-                    if (!isSmallScreen)
-                      const Text(
-                        "MCQs Gen",
-                        style: TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    if (!isSmallScreen) const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${controller.questions.length}',
-                        style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                )),
+          ),
           actions: [
             if (!isSmallScreen) ...[
               SortQuestionsButton(isAppBar: true),
@@ -117,6 +147,22 @@ class Homepage extends StatelessWidget {
                 ),
               ),
               Obx(() => _buildAppBarModelDropdown(context)),
+              Obx(() => Tooltip(
+                    message: controller.showSearchHistoryPanel.value
+                        ? 'Hide Search History Panel'
+                        : 'Show Search History Panel',
+                    child: IconButton(
+                      icon: Icon(
+                        controller.showSearchHistoryPanel.value
+                            ? Icons.history_toggle_off
+                            : Icons.history,
+                        color: controller.showSearchHistoryPanel.value
+                            ? Colors.amber.shade300
+                            : Colors.white,
+                      ),
+                      onPressed: () => controller.toggleSearchHistoryPanel(),
+                    ),
+                  )),
             ],
             Obx(() => IconButton(
                   icon: Icon(
@@ -203,12 +249,62 @@ class Homepage extends StatelessWidget {
                       ],
                     ),
                   ),
-                  // Right Panel (Desktop / Web only)
-                  if (!isSmallScreen) SearchHistoryPanelWidget(),
+                  // Right Panel (Desktop / Web only - Collapsible)
+                  Obx(() =>
+                      (controller.showSearchHistoryPanel.value && !isSmallScreen)
+                          ? SearchHistoryPanelWidget()
+                          : const SizedBox.shrink()),
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBarTextField({
+    required BuildContext context,
+    required String label,
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required ValueChanged<String> onChanged,
+    required double width,
+  }) {
+    return Container(
+      width: width,
+      height: 36,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        onChanged: onChanged,
+        style: const TextStyle(
+            color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+        cursorColor: Colors.white,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 10,
+              fontWeight: FontWeight.bold),
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.15),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Colors.white, width: 1.5),
+          ),
         ),
       ),
     );
@@ -325,23 +421,15 @@ class Homepage extends StatelessWidget {
   }
 
   void showQuestionsCopiedMessageOnScreen(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      snackBarAnimationStyle: const AnimationStyle(
-          duration: Duration(seconds: 1),
-          curve: Curves.easeIn,
-          reverseCurve: Curves.bounceIn,
-          reverseDuration: Duration(seconds: 1)),
-      SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text(
-            '${controller.questions.length} questions copied on the clipboard'),
-        backgroundColor: Colors.green,
-        padding: const EdgeInsets.all(16),
-        behavior: SnackBarBehavior.floating,
-        clipBehavior: Clip.antiAliasWithSaveLayer,
-        dismissDirection: DismissDirection.horizontal,
-        showCloseIcon: true,
-      ),
+    Get.snackbar(
+      'Copied',
+      '${controller.questions.length} questions copied to clipboard',
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: Colors.green.shade600,
+      colorText: Colors.white,
+      icon: const Icon(Icons.copy_all, color: Colors.white),
+      margin: const EdgeInsets.all(12),
+      duration: const Duration(seconds: 2),
     );
   }
 
@@ -378,10 +466,11 @@ class Homepage extends StatelessWidget {
               'Do you want to remove all the ${controller.questions.length} questions from the list?'),
           title: const Text('Warning'),
           actions: [
-            FilledButton(
+            TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('No')),
             FilledButton(
+                autofocus: true,
                 style: ButtonStyle(
                   foregroundColor: WidgetStateColor.resolveWith(
                     (states) {
@@ -397,6 +486,7 @@ class Homepage extends StatelessWidget {
                 onPressed: () {
                   controller.questions.clear();
                   Navigator.of(context).pop();
+                  controller.inputFocusNode.requestFocus();
                 },
                 child: const Text(
                   'Yes',
@@ -404,7 +494,9 @@ class Homepage extends StatelessWidget {
           ],
         );
       },
-    );
+    ).then((_) {
+      controller.inputFocusNode.requestFocus();
+    });
   }
 
   void pickAndLoadQuestions(BuildContext context) async {
@@ -449,12 +541,24 @@ class Homepage extends StatelessWidget {
           if (!context.mounted) return;
           showDialog(
             context: context,
-            builder: (context) {
+            builder: (dialogContext) {
               return AlertDialog(
                 title: Text('${loadedQuestions.length} questions added'),
+                actions: [
+                  FilledButton(
+                    autofocus: true,
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      controller.inputFocusNode.requestFocus();
+                    },
+                    child: const Text('OK'),
+                  ),
+                ],
               );
             },
-          );
+          ).then((_) {
+            controller.inputFocusNode.requestFocus();
+          });
         } else {
           return;
         }
