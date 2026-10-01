@@ -456,16 +456,37 @@ class AiWidget extends StatelessWidget {
             child: ListView.builder(
               shrinkWrap: true,
               itemCount: history.length,
-              itemBuilder: (context, index) => ListTile(
-                leading: const Icon(Icons.history),
-                title: Text(history[index],
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                onTap: () {
-                  Navigator.pop(context);
-                  controller.inputController.text = history[index];
-                  _handleSubmission(context);
-                },
-              ),
+              itemBuilder: (context, index) {
+                final historyText = history[index];
+                return ListTile(
+                  leading: const Icon(Icons.history),
+                  title: Text(historyText,
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.copy, size: 18),
+                    tooltip: 'Copy search text',
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: historyText));
+                      Get.snackbar(
+                        'Copied',
+                        'Search text copied to clipboard',
+                        snackPosition: SnackPosition.TOP,
+                        backgroundColor: Colors.green.shade600,
+                        colorText: Colors.white,
+                        icon: const Icon(Icons.check_circle_outline,
+                            color: Colors.white),
+                        margin: const EdgeInsets.all(12),
+                        duration: const Duration(seconds: 2),
+                      );
+                    },
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    controller.inputController.text = historyText;
+                    _handleSubmission(context);
+                  },
+                );
+              },
             ),
           ),
         ],

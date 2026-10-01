@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:mcqs_generator_ai_app/get_controllers/home_controller.dart';
 import 'package:mcqs_generator_ai_app/models.dart';
@@ -134,11 +135,36 @@ class SearchHistoryPanelWidget extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Row: Status Icon & Badge + Action Buttons (Stop / Re-run / Delete)
+                // Top Row: Status Icon & Badge + Action Buttons (Copy / Stop / Re-run / Delete)
                 Row(
                   children: [
                     _buildStatusBadge(task),
                     const Spacer(),
+                    Tooltip(
+                      message: 'Copy search text',
+                      child: IconButton(
+                        icon: const Icon(Icons.copy, size: 18),
+                        color: Colors.blueGrey.shade700,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () {
+                          Clipboard.setData(
+                              ClipboardData(text: task.searchText));
+                          Get.snackbar(
+                            'Copied',
+                            'Search text copied to clipboard',
+                            snackPosition: SnackPosition.TOP,
+                            backgroundColor: Colors.green.shade600,
+                            colorText: Colors.white,
+                            icon: const Icon(Icons.check_circle_outline,
+                                color: Colors.white),
+                            margin: const EdgeInsets.all(12),
+                            duration: const Duration(seconds: 2),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     if (task.status == SearchTaskStatus.inProgress) ...[
                       Tooltip(
                         message: 'Stop generating MCQs',
