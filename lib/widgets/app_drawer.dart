@@ -84,26 +84,26 @@ class _AppDrawerState extends State<AppDrawer> {
                     icon: Icons.save,
                     title: 'Save as JSON',
                     onTap: () {
+                      Get.back();
                       UtilFunctions.saveMCQs(
                           widget.controller.subject.value,
                           widget.controller.topicID.value,
                           widget.controller.questions,
                           context,
                           true);
-                      Get.back();
                     },
                   ),
                   _buildDrawerItem(
                     icon: Icons.save_as,
                     title: 'Save as TEXT',
                     onTap: () {
+                      Get.back();
                       UtilFunctions.saveMCQs(
                           widget.controller.subject.value,
                           widget.controller.topicID.value,
                           widget.controller.questions,
                           context,
                           false);
-                      Get.back();
                     },
                   ),
                   _buildDrawerItem(
