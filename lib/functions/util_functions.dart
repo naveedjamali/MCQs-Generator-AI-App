@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:mcqs_generator_ai_app/models.dart';
 import 'package:mcqs_generator_ai_app/widgets/save_json_dialog.dart';
@@ -332,104 +332,124 @@ class UtilFunctions {
       BuildContext? context) async {
     if (questionsList.isEmpty) return;
 
+    String? dirPath;
     try {
-      String? dirPath = await FilePicker.getDirectoryPath(
-        dialogTitle: 'Choose folder to save JSON chunk files',
-      );
-
-      if (dirPath == null) {
-        return; // User cancelled
-      }
-
-      int total = questionsList.length;
-      List<String> createdFilePaths = [];
-
-      for (int i = 0; i < total; i += chunkSize) {
-        int from = i + 1;
-        int to = (i + chunkSize > total) ? total : (i + chunkSize);
-        List<Question> sublist = questionsList.sublist(i, to);
-
-        String cleanTopic = topic
-            .replaceAll(RegExp(r'[^\w\s-]'), '')
-            .replaceAll(' ', '_')
-            .toLowerCase();
-        String cleanSubject = subject
-            .replaceAll(RegExp(r'[^\w\s-]'), '')
-            .replaceAll(' ', '_')
-            .toLowerCase();
-
-        String fileName =
-            '${cleanTopic}_subject_${cleanSubject}_q_$from-$to.json';
-        String filePath = '$dirPath/$fileName';
-
-        String jsonContent = questionsToJSON(sublist, subject, topic);
-        File file = File(filePath);
-        await file.writeAsString(jsonContent);
-        createdFilePaths.add(filePath);
-      }
-
-      if (context != null && context.mounted && createdFilePaths.isNotEmpty) {
-        showDialog(
-          context: context,
-          builder: (dialogContext) {
-            return AlertDialog(
-              title: const Text('Chunk Files Saved'),
-              icon: const Icon(
-                Icons.check_circle_outline,
-                color: Colors.green,
-                size: 40,
-              ),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                        'Successfully saved ${createdFilePaths.length} JSON chunk files to:'),
-                    const SizedBox(height: 8),
-                    Container(
-                      constraints: const BoxConstraints(maxHeight: 180),
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: createdFilePaths.length,
-                        itemBuilder: (ctx, idx) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2.0),
-                          child: SelectableText(
-                            createdFilePaths[idx],
-                            style: const TextStyle(
-                                fontSize: 11, color: Colors.blueGrey),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                FilledButton(
-                  autofocus: true,
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('OK'),
-                ),
-              ],
-            );
-          },
+      if (!kIsWeb) {
+        dirPath = await FilePicker.getDirectoryPath(
+          dialogTitle: 'Choose folder to save JSON chunk files',
         );
       }
     } catch (e) {
-      Get.snackbar(
-        'Error Saving Chunks',
-        e.toString(),
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.red.shade600,
-        colorText: Colors.white,
-      );
+      // getDirectoryPath is unsupported/unimplemented on this platform (e.g. Web)
+      dirPath = null;
+    }
+
+    int total = questionsList.length;
+
+    // If directory selection succeeded (Native Desktop / Mobile IO)
+    if (dirPath != null && dirPath.isNotEmpty) {
+      try {
+        List<String> createdFilePaths = [];
+
+        for (int i = 0; i < total; i += chunkSize) {
+          int from = i + 1;
+          int to = (i + chunkSize > total) ? total : (i + chunkSize);
+          List<Question> sublist = questionsList.sublist(i, to);
+
+          String cleanTopic = topic
+              .replaceAll(RegExp(r'[^\w\s-]'), '')
+              .replaceAll(' ', '_')
+              .toLowerCase();
+          String cleanSubject = subject
+              .replaceAll(RegExp(r'[^\w\s-]'), '')
+              .replaceAll(' ', '_')
+              .toLowerCase();
+
+          String fileName =
+              '${cleanTopic}_subject_${cleanSubject}_q_$from-$to.json';
+          String filePath = '$dirPath/$fileName';
+
+          String jsonContent = questionsToJSON(sublist, subject, topic);
+          File file = File(filePath);
+          await file.writeAsString(jsonContent);
+          createdFilePaths.add(filePath);
+        }
+
+        if (context != null && context.mounted && createdFilePaths.isNotEmpty) {
+          showDialog(
+            context: context,
+            builder: (dialogContext) {
+              return AlertDialog(
+                title: const Text('Chunk Files Saved'),
+                icon: const Icon(
+                  Icons.check_circle_outline,
+                  color: Colors.green,
+                  size: 40,
+                ),
+                content: SizedBox(
+                  width: double.maxFinite,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                          'Successfully saved ${createdFilePaths.length} JSON chunk files to:'),
+                      const SizedBox(height: 8),
+                      Container(
+                        constraints: const BoxConstraints(maxHeight: 180),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: createdFilePaths.length,
+                          itemBuilder: (ctx, idx) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2.0),
+                            child: SelectableText(
+                              createdFilePaths[idx],
+                              style: const TextStyle(
+                                  fontSize: 11, color: Colors.blueGrey),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  FilledButton(
+                    autofocus: true,
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+        return;
+      } catch (e) {
+        Get.snackbar(
+          'Error Saving Chunks',
+          e.toString(),
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.red.shade600,
+          colorText: Colors.white,
+        );
+        return;
+      }
+    }
+
+    // FALLBACK (for Web or platforms where getDirectoryPath is unsupported):
+    // Save chunk files sequentially via saveFile picker / browser download
+    for (int i = 0; i < total; i += chunkSize) {
+      int from = i + 1;
+      int to = (i + chunkSize > total) ? total : (i + chunkSize);
+      List<Question> sublist = questionsList.sublist(i, to);
+
+      await processSaveJsonRange(subject, topic, sublist, from, to, context);
     }
   }
 
