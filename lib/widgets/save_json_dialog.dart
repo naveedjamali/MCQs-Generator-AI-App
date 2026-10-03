@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mcqs_generator_ai_app/functions/util_functions.dart';
+import 'package:mcqs_generator_ai_app/get_controllers/home_controller.dart';
 import 'package:mcqs_generator_ai_app/models.dart';
 
 enum JsonSaveMode { all, range, chunk }
@@ -30,10 +31,12 @@ class _SaveJsonDialogState extends State<SaveJsonDialog> {
   @override
   void initState() {
     super.initState();
+    final AppController controller = Get.find();
     _fromController = TextEditingController(text: '1');
     _toController =
         TextEditingController(text: widget.questionsList.length.toString());
-    _chunkSizeController = TextEditingController(text: '500');
+    _chunkSizeController = TextEditingController(
+        text: controller.defaultJsonChunkSize.value.toString());
   }
 
   @override
@@ -261,6 +264,9 @@ class _SaveJsonDialogState extends State<SaveJsonDialog> {
         );
         return;
       }
+
+      final AppController controller = Get.find();
+      controller.saveDefaultJsonChunkSize(chunkSize);
 
       Navigator.pop(context);
       UtilFunctions.processSaveJsonChunks(

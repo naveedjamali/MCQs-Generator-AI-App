@@ -191,6 +191,17 @@ class _AppDrawerState extends State<AppDrawer> {
                         onChanged: (val) =>
                             widget.controller.saveSelectedDifficulty(val!),
                       )),
+                  Obx(() => _buildDropdownItem<int>(
+                        icon: Icons.inventory_2_outlined,
+                        title: 'Default JSON Chunk Size',
+                        value: widget.controller.defaultJsonChunkSize.value,
+                        items: const [100, 250, 500, 1000],
+                        onChanged: (val) {
+                          if (val != null) {
+                            widget.controller.saveDefaultJsonChunkSize(val);
+                          }
+                        },
+                      )),
                 ]),
                 const SizedBox(height: 16),
                 _buildSectionTitle('Content Import'),

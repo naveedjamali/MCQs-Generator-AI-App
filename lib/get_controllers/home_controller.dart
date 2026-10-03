@@ -25,6 +25,7 @@ class AppController extends GetxController {
 
   RxString selectedLanguage = "English".obs;
   RxString selectedDifficulty = "Medium".obs;
+  RxInt defaultJsonChunkSize = 500.obs;
 
   static const String defaultCsvInstructions = '''
 MOST IMPORTANT: Generate MCQs from the given text only. 
@@ -247,6 +248,7 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     useAiToGenerateEssay.value = sp.getBool("USE_AI_ESSAY") ?? true;
     selectedLanguage.value = sp.getString("TARGET_LANGUAGE") ?? "English";
     selectedDifficulty.value = sp.getString("DIFFICULTY_LEVEL") ?? "Medium";
+    defaultJsonChunkSize.value = sp.getInt("DEFAULT_JSON_CHUNK_SIZE") ?? 500;
 
     String savedSubject = sp.getString("SUBJECT_NAME") ?? "Computer Studies";
     String savedTopic = sp.getString("TOPIC_NAME") ?? "Computer System";
@@ -310,6 +312,14 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
     SharedPreferences sp = await SharedPreferences.getInstance();
     bool saved = await sp.setString("DIFFICULTY_LEVEL", difficulty);
     selectedDifficulty.value = difficulty;
+    update();
+    return saved;
+  }
+
+  Future<bool> saveDefaultJsonChunkSize(int chunkSize) async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+    bool saved = await sp.setInt("DEFAULT_JSON_CHUNK_SIZE", chunkSize);
+    defaultJsonChunkSize.value = chunkSize;
     update();
     return saved;
   }
@@ -1049,13 +1059,25 @@ If a question is invalid or unfixable, discard it. If it's good, ensure it's pol
       FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf'],
+        withData: true,
       );
 
-      if (result != null) {
+      if (result != null && result.files.isNotEmpty) {
         setGeneratingResponse(true, message: 'Extracting text from PDF...');
-        File file = File(result.files.single.path!);
-        final sf.PdfDocument document =
-            sf.PdfDocument(inputBytes: file.readAsBytesSync());
+        final fileItem = result.files.single;
+        Uint8List? bytes = fileItem.bytes;
+
+        if ((bytes == null || bytes.isEmpty) &&
+            fileItem.path != null &&
+            fileItem.path!.isNotEmpty) {
+          bytes = await File(fileItem.path!).readAsBytes();
+        }
+
+        if (bytes == null || bytes.isEmpty) {
+          throw 'Unable to read bytes from selected PDF file.';
+        }
+
+        final sf.PdfDocument document = sf.PdfDocument(inputBytes: bytes);
 
         String extractedText = "";
 

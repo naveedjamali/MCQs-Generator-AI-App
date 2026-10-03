@@ -501,16 +501,25 @@ class Homepage extends StatelessWidget {
 
   void pickAndLoadQuestions(BuildContext context) async {
     try {
-      // Open the file picker
+      // Open the file picker with in-memory bytes for web/cross-platform compatibility
       FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
+        withData: true,
       );
 
-      if (result != null) {
-        // Read the selected file
-        File file = File(result.files.single.path!);
-        String content = await file.readAsString();
+      if (result != null && result.files.isNotEmpty) {
+        final fileItem = result.files.single;
+        String content;
+
+        if (fileItem.bytes != null && fileItem.bytes!.isNotEmpty) {
+          content = utf8.decode(fileItem.bytes!);
+        } else if (fileItem.path != null && fileItem.path!.isNotEmpty) {
+          File file = File(fileItem.path!);
+          content = await file.readAsString();
+        } else {
+          throw 'Unable to read the selected JSON file content.';
+        }
 
         // Parse the JSON content
         final List<dynamic> data = jsonDecode(content);
@@ -567,7 +576,13 @@ class Homepage extends StatelessWidget {
         return;
       }
     } catch (e) {
-      throw Exception("Failed to load questions: $e");
+      Get.snackbar(
+        'Load Error',
+        'Failed to load questions: $e',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.red.shade600,
+        colorText: Colors.white,
+      );
     }
   }
 
