@@ -1,82 +1,78 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import 'package:mcqs_generator_ai_app/models.dart';
+import 'package:mcqs_generator_ai_app/widgets/save_json_dialog.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
-///Contains utility functions
 class UtilFunctions {
-  ///The functions converts all the question to text form, and return the String containing text.
-  ///[subject] of mcqs,
-  ///[topic] of mcqs,
-  ///[questionsList] list containing all the questions
-  static String questionToText(
-    String subject,
-    String topic,
-    List<Question> questionsList,
-  ) {
-    const answerOptions = [
-      'A',
-      'B',
-      'C',
-      'D',
-      'E',
-      'F',
-      'G',
-      'H',
-      'I',
-      'J',
-      'K',
-    ];
-
-    String mcqs =
-        "Subject: $subject, Topic: $topic, total questions: ${questionsList.length}\n";
-    String keys = "\n\nKeys of correct Answers\n\n";
-
-    for (int i = 0; i < questionsList.length; i++) {
-      String rawContent = questionsList[i].body?.content.toString() ?? '';
-      String questionText = rawContent;
-      String explanationText = '';
-
-      if (rawContent.contains('[[EXPL]]')) {
-        List<String> parts = rawContent.split('[[EXPL]]');
-        questionText = parts[0].trim();
-        explanationText = parts[1].trim();
-      } else if (rawContent.contains('Explanation:')) {
-        List<String> parts = rawContent.split('Explanation:');
-        questionText = parts[0].trim();
-        explanationText = parts[1].trim();
-      }
-
-      String q = "\nQ# ${i + 1}: $questionText";
-
-      int totalAnswers = questionsList[i].answerOptions!.length;
-      for (int j = 0; j < totalAnswers; j++) {
-        q +=
-            "\n\t${answerOptions[j]}: ${questionsList[i].answerOptions?[j].body?.content.toString()}";
-        if (questionsList[i].answerOptions![j].isCorrect ?? false) {
-          int qNum = i + 1;
-          String keyLine = "$qNum: ${answerOptions[j]}";
-          if (explanationText.isNotEmpty) {
-            keyLine += " - $explanationText";
-          }
-          keys += "\n$keyLine";
-        }
-      }
-      mcqs += q;
-    }
-
-    final allText = mcqs + keys;
-    return allText;
+  /// Strips all comma characters from text to ensure CSV integrity
+  static String removeCommas(String text) {
+    return text.replaceAll(',', '');
   }
 
-  /// Converts the question list to a JSON string, stripping out explanations if requested.
+  /// Converts a List of Question objects into a plain text formatted string
+  static String questionToText(
+    String subjectID,
+    String topicID,
+    List<Question> questions,
+  ) {
+    const options = [
+      '(A)',
+      '(B)',
+      '(C)',
+      '(D)',
+      '(E)',
+      '(F)',
+      '(G)',
+      '(H)',
+      '(I)',
+      '(J)',
+      '(K)',
+    ];
+    String mcqs =
+        "Subject: $subjectID, Chapter: $topicID, Total Questions: ${questions.length}\n";
+    String keys = "\n\nAnswer Key\n\n";
+
+    for (int i = 0; i < questions.length; i++) {
+      // Strip explanation tag for text export if present
+      String rawBody = questions[i].body?.content.toString() ?? '';
+      String questionBody = rawBody;
+      if (rawBody.contains('[[EXPL]]')) {
+        questionBody = rawBody.split('[[EXPL]]')[0].trim();
+      } else if (rawBody.contains('Explanation:')) {
+        questionBody = rawBody.split('Explanation:')[0].trim();
+      }
+
+      String questionText = "\nQ# ${i + 1}: $questionBody";
+
+      if (questions[i].answerOptions != null) {
+        int totalAnswers = questions[i].answerOptions!.length;
+        for (int j = 0; j < totalAnswers; j++) {
+          String optLabel = j < options.length ? options[j] : '(${j + 1})';
+          questionText +=
+              "\n\t$optLabel: ${questions[i].answerOptions?[j].body?.content.toString()}";
+          if (questions[i].answerOptions![j].isCorrect ?? false) {
+            keys +=
+                "Q# ${i + 1}: $optLabel ${(i + 1) % 10 == 0 ? '' : '\n'}";
+          }
+        }
+      }
+      mcqs += questionText;
+    }
+
+    final completeText = mcqs + keys;
+    return completeText;
+  }
+
+  /// Converts a List of Question objects into a JSON string
   static String questionsToJSON(
       List<Question> questionsList, String subject, String topic) {
     List<Map<String, dynamic>> jsonList = questionsList.map((q) {
@@ -99,71 +95,75 @@ class UtilFunctions {
     return jsonEncode(jsonList);
   }
 
-  ///Saves the mcqs in a file on local storage
-  ///[subject] of mcqs,
-  ///[topic] of mcqs,
-  ///bool [saveAsJSON] to set flag for saving as JSON or Text
+  /// Saves the mcqs in a file on local storage
   static Future<void> saveMCQs(
       String subject,
       String topic,
       List<Question> questionsList,
       BuildContext? context,
       bool saveAsJSON) async {
+    if (questionsList.isEmpty) {
+      Get.snackbar(
+        'No Questions',
+        'There are no questions available to save.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.orange.shade800,
+        colorText: Colors.white,
+        margin: const EdgeInsets.all(12),
+      );
+      return;
+    }
+
+    if (saveAsJSON) {
+      if (context != null && context.mounted) {
+        showDialog(
+          context: context,
+          builder: (dialogContext) => SaveJsonDialog(
+            subject: subject,
+            topic: topic,
+            questionsList: questionsList,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Saving as Text
     String fileName =
         '${topic}_subject_${subject}_questions_${questionsList.length}'
             .replaceAll(RegExp(r'[^\w\s-]'), '')
             .replaceAll(' ', '_')
             .toLowerCase();
 
-    String extension = saveAsJSON ? 'json' : 'txt';
+    String extension = 'txt';
     String fullFileName = '$fileName.$extension';
-
-    // Get output content
-    String content;
-    if (saveAsJSON) {
-      content = questionsToJSON(questionsList, subject, topic);
-    } else {
-      content = questionToText(subject, topic, questionsList);
-    }
+    String content = questionToText(subject, topic, questionsList);
 
     try {
-      // Convert content to bytes as required by some platforms
       Uint8List bytes = Uint8List.fromList(utf8.encode(content));
 
-      // We use the 'bytes' parameter in saveFile as it's required for Android stability.
-      // To prevent the "double save" issue, we DO NOT call writeAsBytes manually
-      // after the picker returns. The plugin handles the save automatically.
       String? filePath = await FilePicker.saveFile(
-        dialogTitle: 'Save MCQs',
+        dialogTitle: 'Save MCQs Text File',
         fileName: fullFileName,
         type: FileType.custom,
         allowedExtensions: [extension],
         bytes: bytes,
       );
 
-      if (filePath == null) {
-        // User canceled the picker
-        return;
-      }
+      if (filePath == null) return;
 
-      // If the picker returned a path but for some reason the file wasn't created
-      // (can happen on some desktop platforms if bytes are provided), we write it.
-      // On Android, it will already exist and we skip this.
       final file = File(filePath);
       if (!(await file.exists()) || (await file.length()) == 0) {
-        // Before writing, ensure extension is correct if we are forced to write manually
         if (!filePath.toLowerCase().endsWith('.$extension')) {
           filePath = '$filePath.$extension';
-          await File(filePath).writeAsBytes(bytes);
-        } else {
-          await file.writeAsBytes(bytes);
         }
+        await File(filePath).writeAsBytes(bytes);
       }
 
       if (context != null && context.mounted) {
         showDialog(
           context: context,
-          builder: (context) {
+          builder: (dialogContext) {
             return AlertDialog(
               title: const Text('File Saved'),
               icon: const Icon(
@@ -191,16 +191,17 @@ class UtilFunctions {
                 ],
               ),
               actions: [
-                TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('OK'))
+                FilledButton(
+                  autofocus: true,
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('OK'),
+                ),
               ],
             );
           },
         );
       }
     } catch (e) {
-      // Fallback: try saving to application documents directory if everything else failed
       try {
         Directory appDocDir = await getApplicationDocumentsDirectory();
         String fallbackPath = '${appDocDir.path}/$fullFileName';
@@ -210,111 +211,331 @@ class UtilFunctions {
         if (context != null && context.mounted) {
           showDialog(
             context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Save Error / Fallback'),
-              content: Text(
-                  'Could not save to selected location ($e). File saved to internal app storage instead:\n\n$fallbackPath'),
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('Saved to Documents'),
+              content: SelectableText(fallbackPath),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
+                FilledButton(
+                  autofocus: true,
+                  onPressed: () => Navigator.of(dialogContext).pop(),
                   child: const Text('OK'),
-                )
+                ),
               ],
             ),
           );
         }
-      } catch (e2) {
-        if (context != null && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Fatal Error saving file: $e2'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+      } catch (err) {
+        Get.snackbar('Save Error', err.toString(),
+            snackPosition: SnackPosition.TOP);
       }
     }
   }
 
-  static String removeCommas(String original) {
-    // Regular expression to remove commas at the beginning
-    RegExp regex = RegExp(r'^,+');
-    String newString = original.replaceAll(regex, '');
-    return newString;
+  static Future<void> processSaveJsonAll(
+      String subject,
+      String topic,
+      List<Question> questionsList,
+      BuildContext? context) async {
+    processSaveJsonRange(
+        subject, topic, questionsList, 1, questionsList.length, context);
   }
 
+  static Future<void> processSaveJsonRange(
+      String subject,
+      String topic,
+      List<Question> sublist,
+      int from,
+      int to,
+      BuildContext? context) async {
+    String cleanTopic = topic
+        .replaceAll(RegExp(r'[^\w\s-]'), '')
+        .replaceAll(' ', '_')
+        .toLowerCase();
+    String cleanSubject = subject
+        .replaceAll(RegExp(r'[^\w\s-]'), '')
+        .replaceAll(' ', '_')
+        .toLowerCase();
+
+    String fileName =
+        '${cleanTopic}_subject_${cleanSubject}_q_$from-$to.json';
+    String content = questionsToJSON(sublist, subject, topic);
+    Uint8List bytes = Uint8List.fromList(utf8.encode(content));
+
+    try {
+      String? filePath = await FilePicker.saveFile(
+        dialogTitle: 'Save JSON Range ($from - $to)',
+        fileName: fileName,
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        bytes: bytes,
+      );
+
+      if (filePath == null) return;
+
+      final file = File(filePath);
+      if (!(await file.exists()) || (await file.length()) == 0) {
+        if (!filePath.toLowerCase().endsWith('.json')) {
+          filePath = '$filePath.json';
+        }
+        await File(filePath).writeAsBytes(bytes);
+      }
+
+      if (context != null && context.mounted) {
+        showDialog(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('File Saved'),
+            icon: const Icon(
+              Icons.check_circle_outline,
+              color: Colors.green,
+              size: 40,
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Your JSON file has been saved successfully to:'),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SelectableText(
+                    filePath!,
+                    style:
+                        const TextStyle(fontSize: 12, color: Colors.blueGrey),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              FilledButton(
+                autofocus: true,
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.TOP);
+    }
+  }
+
+  static Future<void> processSaveJsonChunks(
+      String subject,
+      String topic,
+      List<Question> questionsList,
+      int chunkSize,
+      BuildContext? context) async {
+    if (questionsList.isEmpty) return;
+
+    try {
+      String? dirPath = await FilePicker.getDirectoryPath(
+        dialogTitle: 'Choose folder to save JSON chunk files',
+      );
+
+      if (dirPath == null) {
+        return; // User cancelled
+      }
+
+      int total = questionsList.length;
+      List<String> createdFilePaths = [];
+
+      for (int i = 0; i < total; i += chunkSize) {
+        int from = i + 1;
+        int to = (i + chunkSize > total) ? total : (i + chunkSize);
+        List<Question> sublist = questionsList.sublist(i, to);
+
+        String cleanTopic = topic
+            .replaceAll(RegExp(r'[^\w\s-]'), '')
+            .replaceAll(' ', '_')
+            .toLowerCase();
+        String cleanSubject = subject
+            .replaceAll(RegExp(r'[^\w\s-]'), '')
+            .replaceAll(' ', '_')
+            .toLowerCase();
+
+        String fileName =
+            '${cleanTopic}_subject_${cleanSubject}_q_$from-$to.json';
+        String filePath = '$dirPath/$fileName';
+
+        String jsonContent = questionsToJSON(sublist, subject, topic);
+        File file = File(filePath);
+        await file.writeAsString(jsonContent);
+        createdFilePaths.add(filePath);
+      }
+
+      if (context != null && context.mounted && createdFilePaths.isNotEmpty) {
+        showDialog(
+          context: context,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: const Text('Chunk Files Saved'),
+              icon: const Icon(
+                Icons.check_circle_outline,
+                color: Colors.green,
+                size: 40,
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                        'Successfully saved ${createdFilePaths.length} JSON chunk files to:'),
+                    const SizedBox(height: 8),
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 180),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: createdFilePaths.length,
+                        itemBuilder: (ctx, idx) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2.0),
+                          child: SelectableText(
+                            createdFilePaths[idx],
+                            style: const TextStyle(
+                                fontSize: 11, color: Colors.blueGrey),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                FilledButton(
+                  autofocus: true,
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error Saving Chunks',
+        e.toString(),
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.red.shade600,
+        colorText: Colors.white,
+      );
+    }
+  }
+
+  /// Alias for printMCQs
   static Future<void> exportToPdf(
-      String subject, String topic, List<Question> questionsList) async {
+          String subject, String topic, List<Question> questions) =>
+      printMCQs(subject, topic, questions);
+
+  /// Generates a PDF document for printing
+  static Future<void> printMCQs(
+      String subject, String topic, List<Question> questions) async {
     final pdf = pw.Document();
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
         build: (pw.Context context) {
           return [
             pw.Header(
               level: 0,
-              child: pw.Text("MCQs: $subject - $topic",
-                  style: pw.TextStyle(
-                      fontSize: 24, fontWeight: pw.FontWeight.bold)),
-            ),
-            pw.SizedBox(height: 20),
-            ...questionsList.asMap().entries.map((entry) {
-              int index = entry.key;
-              Question q = entry.value;
-
-              String rawContent = q.body?.content ?? '';
-              String questionText = rawContent;
-              if (rawContent.contains('[[EXPL]]')) {
-                questionText = rawContent.split('[[EXPL]]')[0].trim();
-              } else if (rawContent.contains('Explanation:')) {
-                questionText = rawContent.split('Explanation:')[0].trim();
-              }
-
-              return pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text("${index + 1}. $questionText",
-                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.SizedBox(height: 5),
-                  ...q.answerOptions!.asMap().entries.map((aEntry) {
-                    int aIndex = aEntry.key;
-                    AnswerOptions a = aEntry.value;
-                    String label = String.fromCharCode(65 + aIndex);
-                    return pw.Padding(
-                      padding: const pw.EdgeInsets.only(left: 20, bottom: 2),
-                      child: pw.Text("$label) ${a.body?.content ?? ''}"),
-                    );
-                  }),
-                  pw.SizedBox(height: 15),
+                  pw.Text('Subject: $subject',
+                      style: pw.TextStyle(
+                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('Topic: $topic',
+                      style: pw.TextStyle(
+                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
                 ],
-              );
-            }),
-            pw.NewPage(),
-            pw.Header(level: 1, text: "Answer Key & Explanations"),
-            pw.SizedBox(height: 10),
-            ...questionsList.asMap().entries.map((entry) {
+              ),
+            ),
+            pw.SizedBox(height: 16),
+            ...questions.asMap().entries.map((entry) {
               int index = entry.key;
               Question q = entry.value;
 
-              String rawContent = q.body?.content ?? '';
-              String explanationText = '';
-              if (rawContent.contains('[[EXPL]]')) {
-                explanationText = rawContent.split('[[EXPL]]')[1].trim();
-              } else if (rawContent.contains('Explanation:')) {
-                explanationText = rawContent.split('Explanation:')[1].trim();
+              String rawBody = q.body?.content ?? '';
+              String questionBody = rawBody;
+              if (rawBody.contains('[[EXPL]]')) {
+                questionBody = rawBody.split('[[EXPL]]')[0].trim();
+              } else if (rawBody.contains('Explanation:')) {
+                questionBody = rawBody.split('Explanation:')[0].trim();
               }
-
-              int correctIndex =
-                  q.answerOptions!.indexWhere((a) => a.isCorrect ?? false);
-              String correctLabel = correctIndex != -1
-                  ? String.fromCharCode(65 + correctIndex)
-                  : "?";
 
               return pw.Padding(
-                padding: const pw.EdgeInsets.only(bottom: 8),
+                padding: const pw.EdgeInsets.only(bottom: 12),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('Q${index + 1}: $questionBody',
+                        style: pw.TextStyle(
+                            fontWeight: pw.FontWeight.bold, fontSize: 11)),
+                    pw.SizedBox(height: 4),
+                    if (q.answerOptions != null)
+                      ...q.answerOptions!.asMap().entries.map((optEntry) {
+                        int optIndex = optEntry.key;
+                        AnswerOptions opt = optEntry.value;
+                        String optLabel =
+                            String.fromCharCode(65 + optIndex); // A, B, C...
+                        return pw.Padding(
+                          padding: const pw.EdgeInsets.only(left: 12, top: 2),
+                          child: pw.Text(
+                            '($optLabel) ${opt.body?.content ?? ''}',
+                            style: const pw.TextStyle(fontSize: 10),
+                          ),
+                        );
+                      }),
+                  ],
+                ),
+              );
+            }),
+            pw.Divider(),
+            pw.SizedBox(height: 12),
+            pw.Text('ANSWER KEY & EXPLANATIONS',
+                style: pw.TextStyle(
+                    fontSize: 12, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 8),
+            ...questions.asMap().entries.map((entry) {
+              int index = entry.key;
+              Question q = entry.value;
+
+              String correctLabel = '';
+              if (q.answerOptions != null) {
+                for (int i = 0; i < q.answerOptions!.length; i++) {
+                  if (q.answerOptions![i].isCorrect ?? false) {
+                    correctLabel = String.fromCharCode(65 + i);
+                    break;
+                  }
+                }
+              }
+
+              String explanationText = '';
+              String rawBody = q.body?.content ?? '';
+              if (rawBody.contains('[[EXPL]]')) {
+                explanationText = rawBody.split('[[EXPL]]')[1].trim();
+              } else if (rawBody.contains('Explanation:')) {
+                explanationText = rawBody.split('Explanation:')[1].trim();
+              }
+
+              return pw.Padding(
+                padding: const pw.EdgeInsets.only(bottom: 4),
                 child: pw.RichText(
                   text: pw.TextSpan(
+                    style: const pw.TextStyle(fontSize: 9),
                     children: [
                       pw.TextSpan(
                         text: "Q${index + 1}: $correctLabel",
@@ -333,6 +554,7 @@ class UtilFunctions {
     );
 
     await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdf.save());
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+    );
   }
 }
