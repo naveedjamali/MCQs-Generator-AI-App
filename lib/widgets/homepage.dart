@@ -311,48 +311,140 @@ class Homepage extends StatelessWidget {
   }
 
   Widget _buildAppBarModelDropdown(BuildContext context) {
-    final Map<String, String> modelMap = {
-      'gemini-2.5-flash': 'Gemini 2.5 Flash',
-      'gemini-3-flash-preview': 'Gemini 3 Flash',
-      'gemini-3.1-flash-lite-preview': 'Gemini 3.1 Flash Lite',
-      'gemini-3.1-pro-preview': 'Gemini 3.1 Pro',
-      'gemini-3.5-flash': 'Gemini 3.5 Flash',
-    };
-
-    final currentModel = controller.selectedModel.value;
+    final currentModelKey = controller.selectedModel.value;
+    final displayTitle =
+        AppController.geminiModels[currentModelKey] ?? currentModelKey;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: modelMap.containsKey(currentModel)
-                ? currentModel
-                : modelMap.keys.first,
-            icon: const Icon(Icons.smart_toy_outlined,
-                color: Colors.white, size: 18),
-            dropdownColor: Theme.of(context).colorScheme.surface,
-            style: const TextStyle(
-                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
-            items: modelMap.entries.map((entry) {
-              return DropdownMenuItem<String>(
-                value: entry.key,
-                child: Text(
-                  entry.value,
-                  style: const TextStyle(color: Colors.black, fontSize: 13),
+      child: PopupMenuButton<String>(
+        tooltip: 'Select Gemini AI Model',
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        offset: const Offset(0, 42),
+        elevation: 6,
+        color: Theme.of(context).colorScheme.surface,
+        onSelected: (String modelKey) {
+          controller.saveModelToStorage(modelKey);
+        },
+        itemBuilder: (BuildContext context) {
+          return AppController.geminiModels.entries.map((entry) {
+            final isSelected = currentModelKey == entry.key;
+            return PopupMenuItem<String>(
+              value: entry.key,
+              child: Row(
+                children: [
+                  Icon(
+                    isSelected ? Icons.check_circle : Icons.smart_toy_outlined,
+                    size: 18,
+                    color: isSelected ? Colors.green.shade600 : Colors.blueGrey,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      entry.value,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.w500,
+                        color:
+                            isSelected ? Colors.green.shade800 : Colors.black87,
+                      ),
+                    ),
+                  ),
+                  if (entry.key.contains('3.8') ||
+                      entry.key.contains('3.5') ||
+                      entry.key.contains('2.5')) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text('HOT',
+                          style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber.shade900)),
+                    ),
+                  ] else if (entry.key.contains('preview')) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text('PREVIEW',
+                          style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple.shade800)),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }).toList();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.white.withValues(alpha: 0.25),
+                Colors.white.withValues(alpha: 0.12),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.35),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: Colors.white24,
+                  shape: BoxShape.circle,
                 ),
-              );
-            }).toList(),
-            onChanged: (val) {
-              if (val != null) {
-                controller.saveModelToStorage(val);
-              }
-            },
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: Colors.amberAccent,
+                  size: 14,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                displayTitle,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.arrow_drop_down,
+                color: Colors.white,
+                size: 18,
+              ),
+            ],
           ),
         ),
       ),

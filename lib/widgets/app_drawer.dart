@@ -652,42 +652,77 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   void _showModelSelectionDialog(BuildContext context) {
-    final Map<String, String> modelMap = {
-      'gemini-2.5-flash': 'Gemini 2.5 Flash',
-      'gemini-3-flash-preview': 'Gemini 3 Flash (Preview)',
-      'gemini-3.1-flash-lite-preview': 'Gemini 3.1 Flash Lite',
-      'gemini-3.1-pro-preview': 'Gemini 3.1 Pro (Preview)',
-      'gemini-3.5-flash': 'Gemini 3.5 Flash',
-    };
-
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Choose AI Model'),
-        content: Column(
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (dialogContext) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: modelMap.entries
-              .map((entry) => Obx(() => RadioListTile<String>(
-                    title: Text(entry.value),
-                    value: entry.key,
-                    groupValue: widget.controller.selectedModel.value,
-                    onChanged: (value) async {
-                      if (value != null) {
-                        await widget.controller.saveModelToStorage(value);
-                        if (context.mounted) {
-                          Navigator.pop(context);
-                        }
-                      }
-                    },
-                  )))
-              .toList(),
+          children: [
+            const ListTile(
+              leading: Icon(Icons.auto_awesome, color: Colors.amber),
+              title: Text('Select Gemini AI Model',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+            const Divider(),
+            Expanded(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: AppController.geminiModels.length,
+                itemBuilder: (ctx, index) {
+                  final entry =
+                      AppController.geminiModels.entries.elementAt(index);
+                  return Obx(() {
+                    final isSelected =
+                        widget.controller.selectedModel.value == entry.key;
+                    return Container(
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 2, horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Theme.of(context)
+                                .colorScheme
+                                .primaryContainer
+                                .withValues(alpha: 0.3)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ListTile(
+                        leading: Icon(
+                          isSelected
+                              ? Icons.check_circle
+                              : Icons.smart_toy_outlined,
+                          color: isSelected
+                              ? Colors.green.shade600
+                              : Colors.blueGrey,
+                        ),
+                        title: Text(
+                          entry.value,
+                          style: TextStyle(
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            fontSize: 14,
+                          ),
+                        ),
+                        onTap: () async {
+                          await widget.controller
+                              .saveModelToStorage(entry.key);
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                          }
+                        },
+                      ),
+                    );
+                  });
+                },
+              ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-        ],
       ),
     );
   }
